@@ -37,7 +37,7 @@ import static java.util.Arrays.asList;
 import static org.springframework.context.annotation.AnnotationConfigUtils.AUTOWIRED_ANNOTATION_PROCESSOR_BEAN_NAME;
 
 /**
- * ×¢½âÇı¶¯µÄÒÀÀµ×¢Èë´¦Àí¹ı³Ì
+ * æ³¨è§£é©±åŠ¨çš„ä¾èµ–æ³¨å…¥å¤„ç†è¿‡ç¨‹
  *
  * @author <a href="mailto:mercyblitz@gmail.com">Mercy</a>
  * @see Qualifier
@@ -46,82 +46,82 @@ import static org.springframework.context.annotation.AnnotationConfigUtils.AUTOW
 @Configuration
 public class AnnotationDependencyInjectionResolutionDemo {
 
-    @Autowired          // ÒÀÀµ²éÕÒ£¨´¦Àí£© + ÑÓ³Ù
-    @Lazy
-    private User lazyUser;
+//    @Autowired          // ä¾èµ–æŸ¥æ‰¾ï¼ˆå¤„ç†ï¼‰ + å»¶è¿Ÿ
+//    @Lazy
+//    private User lazyUser;
 
     // DependencyDescriptor ->
-    // ±ØĞë£¨required=true£©
-    // ÊµÊ±×¢Èë£¨eager=true)
-    // Í¨¹ıÀàĞÍ£¨User.class£©
-    // ×Ö¶ÎÃû³Æ£¨"user"£©
-    // ÊÇ·ñÊ×Òª£¨primary = true)
-    @Autowired          // ÒÀÀµ²éÕÒ£¨´¦Àí£©
+    // å¿…é¡»ï¼ˆrequired=trueï¼‰
+    // å®æ—¶æ³¨å…¥ï¼ˆeager=true)
+    // é€šè¿‡ç±»å‹ï¼ˆUser.classï¼‰ è¿›è¡Œä¾èµ–æŸ¥æ‰¾  Autowired
+    // å­—æ®µåç§°ï¼ˆ"user"ï¼‰
+    // æ˜¯å¦é¦–è¦ï¼ˆprimary = true)
+    @Autowired          // ä¾èµ–æŸ¥æ‰¾ï¼ˆå¤„ç†ï¼‰
     private User user;
 
-    @Autowired          // ¼¯ºÏÀàĞÍÒÀÀµ×¢Èë
-    private Map<String, User> users; // user superUser
+//    @Autowired          // é›†åˆç±»å‹ä¾èµ–æ³¨å…¥
+//    private Map<String, User> users; // user superUser
 
-    @MyAutowired
-    private Optional<User> userOptional; // superUser
+//    @MyAutowired
+//    private Optional<User> userOptional; // superUser
 
-    @Inject
-    private User injectedUser;
+//    @Inject
+//    private User injectedUser;
 
-    @InjectedUser
-    private User myInjectedUser;
+//    @InjectedUser
+//    private User myInjectedUser;
 
 //    @Bean(name = AUTOWIRED_ANNOTATION_PROCESSOR_BEAN_NAME)
 //    public static AutowiredAnnotationBeanPostProcessor beanPostProcessor() {
 //        AutowiredAnnotationBeanPostProcessor beanPostProcessor = new AutowiredAnnotationBeanPostProcessor();
-//        // @Autowired + @Inject +  ĞÂ×¢½â @InjectedUser
+//        // @Autowired + @Inject +  æ–°æ³¨è§£ @InjectedUser
 //        Set<Class<? extends Annotation>> autowiredAnnotationTypes =
 //                new LinkedHashSet<>(asList(Autowired.class, Inject.class, InjectedUser.class));
 //        beanPostProcessor.setAutowiredAnnotationTypes(autowiredAnnotationTypes);
 //        return beanPostProcessor;
 //    }
 
-    @Bean
-    @Order(Ordered.LOWEST_PRECEDENCE - 3)
-    @Scope
-    public static AutowiredAnnotationBeanPostProcessor beanPostProcessor() {
-        AutowiredAnnotationBeanPostProcessor beanPostProcessor = new AutowiredAnnotationBeanPostProcessor();
-        beanPostProcessor.setAutowiredAnnotationType(InjectedUser.class);
-        return beanPostProcessor;
-    }
+//    @Bean
+//    @Order(Ordered.LOWEST_PRECEDENCE - 3)
+//    @Scope
+//    public static AutowiredAnnotationBeanPostProcessor beanPostProcessor() {
+//        AutowiredAnnotationBeanPostProcessor beanPostProcessor = new AutowiredAnnotationBeanPostProcessor();
+//        beanPostProcessor.setAutowiredAnnotationType(InjectedUser.class);
+//        return beanPostProcessor;
+//    }
 
     public static void main(String[] args) {
 
-        // ´´½¨ BeanFactory ÈİÆ÷
+        // åˆ›å»º BeanFactory å®¹å™¨
         AnnotationConfigApplicationContext applicationContext = new AnnotationConfigApplicationContext();
-        // ×¢²á Configuration Class£¨ÅäÖÃÀà£© -> Spring Bean
+        // æ³¨å†Œ Configuration Classï¼ˆé…ç½®ç±»ï¼‰ -> Spring Bean
         applicationContext.register(AnnotationDependencyInjectionResolutionDemo.class);
 
         XmlBeanDefinitionReader beanDefinitionReader = new XmlBeanDefinitionReader(applicationContext);
 
         String xmlResourcePath = "classpath:/META-INF/dependency-lookup-context.xml";
-        // ¼ÓÔØ XML ×ÊÔ´£¬½âÎö²¢ÇÒÉú³É BeanDefinition
+        // åŠ è½½ XML èµ„æºï¼Œè§£æå¹¶ä¸”ç”Ÿæˆ BeanDefinition
         beanDefinitionReader.loadBeanDefinitions(xmlResourcePath);
 
-        // Æô¶¯ Spring Ó¦ÓÃÉÏÏÂÎÄ
+        // å¯åŠ¨ Spring åº”ç”¨ä¸Šä¸‹æ–‡
         applicationContext.refresh();
 
-        // ÒÀÀµ²éÕÒ QualifierAnnotationDependencyInjectionDemo Bean
+        // ä¾èµ–æŸ¥æ‰¾ QualifierAnnotationDependencyInjectionDemo Bean
         AnnotationDependencyInjectionResolutionDemo demo = applicationContext.getBean(AnnotationDependencyInjectionResolutionDemo.class);
 
-        // ÆÚ´ıÊä³ö superUser Bean
+        // æœŸå¾…è¾“å‡º superUser Bean
         System.out.println("demo.user = " + demo.user);
-        System.out.println("demo.injectedUser = " + demo.injectedUser);
+//        System.out.println("demo.injectedUser = " + demo.injectedUser);
 
-        // ÆÚ´ıÊä³ö user superUser
-        System.out.println("demo.users = " + demo.users);
-        // ÆÚ´ıÊä³ö superUser Bean
-        System.out.println("demo.userOptional = " + demo.userOptional);
-        // ÆÚ´ıÊä³ö superUser Bean
-        System.out.println("demo.myInjectedUser = " + demo.myInjectedUser);
+        // æœŸå¾…è¾“å‡º user superUser
+//        System.out.println("demo.users = " + demo.users);
+        // æœŸå¾…è¾“å‡º superUser Bean
+//        System.out.println("demo.userOptional = " + demo.userOptional);
+        // æœŸå¾…è¾“å‡º superUser Bean
+//        System.out.println("demo.myInjectedUser = " + demo.myInjectedUser);
 
 
-        // ÏÔÊ¾µØ¹Ø±Õ Spring Ó¦ÓÃÉÏÏÂÎÄ
+        // æ˜¾ç¤ºåœ°å…³é—­ Spring åº”ç”¨ä¸Šä¸‹æ–‡
         applicationContext.close();
     }
 

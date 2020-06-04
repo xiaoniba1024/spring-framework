@@ -149,6 +149,7 @@ public class InjectionPoint {
 	 * Return the type declared by the underlying field or method/constructor parameter,
 	 * indicating the injection type.
 	 */
+	// 被注入的类型
 	public Class<?> getDeclaredType() {
 		return (this.field != null ? this.field.getType() : obtainMethodParameter().getParameterType());
 	}
