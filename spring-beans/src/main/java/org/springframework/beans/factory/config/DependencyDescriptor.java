@@ -68,7 +68,7 @@ public class DependencyDescriptor extends InjectionPoint implements Serializable
 	private final boolean required;
 	//对应 lazy = ture 那么 eager = false  （eager 是否实时）
 	private final boolean eager;
-	//嵌套层次
+	//嵌套层次  1 代表是顶部
 	private int nestingLevel = 1;
 	//包含类（在什么类包含）
 	@Nullable
