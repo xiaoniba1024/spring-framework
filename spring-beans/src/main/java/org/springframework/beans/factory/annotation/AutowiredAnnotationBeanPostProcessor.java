@@ -242,6 +242,8 @@ public class AutowiredAnnotationBeanPostProcessor extends InstantiationAwareBean
 
 
 	@Override
+	//合并parent的属性
+	//如果没有parent，就是当前bean属性本身，如果有parent，则合并parent属性
 	public void postProcessMergedBeanDefinition(RootBeanDefinition beanDefinition, Class<?> beanType, String beanName) {
 		InjectionMetadata metadata = findAutowiringMetadata(beanName, beanType, null);
 		metadata.checkConfigMembers(beanDefinition);
@@ -393,6 +395,7 @@ public class AutowiredAnnotationBeanPostProcessor extends InstantiationAwareBean
 	}
 
 	@Override
+	//解析元数据，会在Bean属性set方法之前执行，
 	public PropertyValues postProcessProperties(PropertyValues pvs, Object bean, String beanName) {
 		InjectionMetadata metadata = findAutowiringMetadata(beanName, bean.getClass(), pvs);
 		try {
@@ -438,7 +441,8 @@ public class AutowiredAnnotationBeanPostProcessor extends InstantiationAwareBean
 		}
 	}
 
-
+	//查找autowired元数据
+	//从缓存中查找，如果没有重新构建
 	private InjectionMetadata findAutowiringMetadata(String beanName, Class<?> clazz, @Nullable PropertyValues pvs) {
 		// Fall back to class name as cache key, for backwards compatibility with custom callers.
 		String cacheKey = (StringUtils.hasLength(beanName) ? beanName : clazz.getName());
@@ -458,7 +462,7 @@ public class AutowiredAnnotationBeanPostProcessor extends InstantiationAwareBean
 		}
 		return metadata;
 	}
-
+	//构建autowired对应的元数据
 	private InjectionMetadata buildAutowiringMetadata(final Class<?> clazz) {
 		if (!AnnotationUtils.isCandidateClass(clazz, this.autowiredAnnotationTypes)) {
 			return InjectionMetadata.EMPTY;
@@ -466,19 +470,20 @@ public class AutowiredAnnotationBeanPostProcessor extends InstantiationAwareBean
 
 		List<InjectionMetadata.InjectedElement> elements = new ArrayList<>();
 		Class<?> targetClass = clazz;
-
+		//递归查找父类中的autowired注解
 		do {
 			final List<InjectionMetadata.InjectedElement> currElements = new ArrayList<>();
-
 			ReflectionUtils.doWithLocalFields(targetClass, field -> {
 				MergedAnnotation<?> ann = findAutowiredAnnotation(field);
 				if (ann != null) {
+					//不支持static字段
 					if (Modifier.isStatic(field.getModifiers())) {
 						if (logger.isInfoEnabled()) {
 							logger.info("Autowired annotation is not supported on static fields: " + field);
 						}
 						return;
 					}
+					//判断是否require
 					boolean required = determineRequiredStatus(ann);
 					currElements.add(new AutowiredFieldElement(field, required));
 				}
@@ -491,6 +496,7 @@ public class AutowiredAnnotationBeanPostProcessor extends InstantiationAwareBean
 				}
 				MergedAnnotation<?> ann = findAutowiredAnnotation(bridgedMethod);
 				if (ann != null && method.equals(ClassUtils.getMostSpecificMethod(method, clazz))) {
+					//不支持static方法
 					if (Modifier.isStatic(method.getModifiers())) {
 						if (logger.isInfoEnabled()) {
 							logger.info("Autowired annotation is not supported on static methods: " + method);
@@ -625,6 +631,7 @@ public class AutowiredAnnotationBeanPostProcessor extends InstantiationAwareBean
 
 		@Override
 		protected void inject(Object bean, @Nullable String beanName, @Nullable PropertyValues pvs) throws Throwable {
+			//field 标注了Autowired注解的，而不是所有field
 			Field field = (Field) this.member;
 			Object value;
 			if (this.cached) {
@@ -664,6 +671,8 @@ public class AutowiredAnnotationBeanPostProcessor extends InstantiationAwareBean
 				}
 			}
 			if (value != null) {
+				// 通过反射的方式进行注入
+				// 使private方法可以进行注入
 				ReflectionUtils.makeAccessible(field);
 				field.set(bean, value);
 			}

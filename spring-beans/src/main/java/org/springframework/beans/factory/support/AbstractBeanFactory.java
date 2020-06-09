@@ -247,6 +247,7 @@ public abstract class AbstractBeanFactory extends FactoryBeanRegistrySupport imp
 
 		// Eagerly check singleton cache for manually registered singletons.
 		Object sharedInstance = getSingleton(beanName);
+		// 如果是SingletonBean，直接返回
 		if (sharedInstance != null && args == null) {
 			if (logger.isTraceEnabled()) {
 				if (isSingletonCurrentlyInCreation(beanName)) {
@@ -1058,6 +1059,7 @@ public abstract class AbstractBeanFactory extends FactoryBeanRegistrySupport imp
 	public BeanDefinition getMergedBeanDefinition(String name) throws BeansException {
 		String beanName = transformedBeanName(name);
 		// Efficiently check whether bean definition exists in this factory.
+		//递归调用Parent
 		if (!containsBeanDefinition(beanName) && getParentBeanFactory() instanceof ConfigurableBeanFactory) {
 			return ((ConfigurableBeanFactory) getParentBeanFactory()).getMergedBeanDefinition(beanName);
 		}
@@ -1271,10 +1273,14 @@ public abstract class AbstractBeanFactory extends FactoryBeanRegistrySupport imp
 	 */
 	protected RootBeanDefinition getMergedLocalBeanDefinition(String beanName) throws BeansException {
 		// Quick check on the concurrent map first, with minimal locking.
-		RootBeanDefinition mbd = this.mergedBeanDefinitions.get(beanName);
-		if (mbd != null && !mbd.stale) {
+		//mergedBeanDefinitions 本地局部缓存（缓存BeanDefinition）
+		// 如果继承层次有多层 就会有多个mergedBeanDefinitions
+		// 例如 父层，子层，孙层，那么就会有对应的三个mergedBeanDefinitions
+		RootBeanDefinition mbd = this.mergedBeanDefinitions.get(beanName); //最小化的锁;
+		if (mbd != null && !mbd.stale) { //不空 并且 没有过期 则 直接返回
 			return mbd;
 		}
+		//缓存未命中
 		return getMergedBeanDefinition(beanName, getBeanDefinition(beanName));
 	}
 
@@ -1302,6 +1308,9 @@ public abstract class AbstractBeanFactory extends FactoryBeanRegistrySupport imp
 	 * @return a (potentially merged) RootBeanDefinition for the given bean
 	 * @throws BeanDefinitionStoreException in case of an invalid bean definition
 	 */
+	// containingBd 包含嵌套Bean定义
+	// 外层Bean -> containingBd
+	// 内层Bean -> innerBean
 	protected RootBeanDefinition getMergedBeanDefinition(
 			String beanName, BeanDefinition bd, @Nullable BeanDefinition containingBd)
 			throws BeanDefinitionStoreException {
@@ -1311,13 +1320,17 @@ public abstract class AbstractBeanFactory extends FactoryBeanRegistrySupport imp
 			RootBeanDefinition previous = null;
 
 			// Check with full lock now in order to enforce the same merged instance.
+			//containingBd为空，代表当前bean是顶层Bean（RootBeanDefinition）,并不是嵌套类
 			if (containingBd == null) {
+				//这里需要关注一个细节
+				//mergedBeanDefinitions.get(beanName) 在前面已经调用一次，这里为什么还要调用
+				//原因：如果是多线程环境，mergedBeanDefinitions.get(beanName)的返回值可能在其他线程被修改过
 				mbd = this.mergedBeanDefinitions.get(beanName);
 			}
 
-			if (mbd == null || mbd.stale) {
+			if (mbd == null || mbd.stale) { //没有被缓存，并且不是新鲜状态（脏数据）
 				previous = mbd;
-				if (bd.getParentName() == null) {
+				if (bd.getParentName() == null) { // 没有parent 则新创建
 					// Use copy of given root bean definition.
 					if (bd instanceof RootBeanDefinition) {
 						mbd = ((RootBeanDefinition) bd).cloneBeanDefinition();
@@ -1326,15 +1339,16 @@ public abstract class AbstractBeanFactory extends FactoryBeanRegistrySupport imp
 						mbd = new RootBeanDefinition(bd);
 					}
 				}
-				else {
+				else {  //有parent  具体的合并过程
 					// Child bean definition: needs to be merged with parent.
 					BeanDefinition pbd;
 					try {
-						String parentBeanName = transformedBeanName(bd.getParentName());
+						String parentBeanName = transformedBeanName(bd.getParentName()); // 规范名称
 						if (!beanName.equals(parentBeanName)) {
+							// 与parentBeanName 不相等，取parent BeanDefinition 递归操作
 							pbd = getMergedBeanDefinition(parentBeanName);
 						}
-						else {
+						else { // beanName， parentBeanName相当， 层次性查找
 							BeanFactory parent = getParentBeanFactory();
 							if (parent instanceof ConfigurableBeanFactory) {
 								pbd = ((ConfigurableBeanFactory) parent).getMergedBeanDefinition(parentBeanName);
@@ -1352,7 +1366,7 @@ public abstract class AbstractBeanFactory extends FactoryBeanRegistrySupport imp
 					}
 					// Deep copy with overridden values.
 					mbd = new RootBeanDefinition(pbd);
-					mbd.overrideFrom(bd);
+					mbd.overrideFrom(bd); //拷贝Parent属性过程，没有的添加，重复的覆盖
 				}
 
 				// Set default singleton scope, if not configured before.
@@ -1538,6 +1552,7 @@ public abstract class AbstractBeanFactory extends FactoryBeanRegistrySupport imp
 		}
 
 		// Resolve regularly, caching the result in the BeanDefinition...
+		// 真正的处理逻辑
 		return mbd.resolveBeanClass(beanClassLoader);
 	}
 

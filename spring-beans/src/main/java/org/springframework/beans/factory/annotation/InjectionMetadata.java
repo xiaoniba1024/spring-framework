@@ -161,7 +161,7 @@ public class InjectionMetadata {
 	 * A single injected element.
 	 */
 	public abstract static class InjectedElement {
-
+		//实现类包括：field， method， constructor
 		protected final Member member;
 
 		protected final boolean isField;

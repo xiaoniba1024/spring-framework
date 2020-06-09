@@ -156,6 +156,7 @@ public final class BeanDefinitionBuilder {
 	 * Validate and return the created BeanDefinition object.
 	 */
 	public AbstractBeanDefinition getBeanDefinition() {
+		//校验
 		this.beanDefinition.validate();
 		return this.beanDefinition;
 	}

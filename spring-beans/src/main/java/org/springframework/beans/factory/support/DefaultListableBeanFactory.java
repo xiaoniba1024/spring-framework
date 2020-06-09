@@ -905,6 +905,7 @@ public class DefaultListableBeanFactory extends AbstractAutowireCapableBeanFacto
 	//---------------------------------------------------------------------
 
 	@Override
+	//注册Bean
 	public void registerBeanDefinition(String beanName, BeanDefinition beanDefinition)
 			throws BeanDefinitionStoreException {
 
@@ -913,6 +914,7 @@ public class DefaultListableBeanFactory extends AbstractAutowireCapableBeanFacto
 
 		if (beanDefinition instanceof AbstractBeanDefinition) {
 			try {
+				//校验
 				((AbstractBeanDefinition) beanDefinition).validate();
 			}
 			catch (BeanDefinitionValidationException ex) {
@@ -922,11 +924,11 @@ public class DefaultListableBeanFactory extends AbstractAutowireCapableBeanFacto
 		}
 
 		BeanDefinition existingDefinition = this.beanDefinitionMap.get(beanName);
-		if (existingDefinition != null) {
-			if (!isAllowBeanDefinitionOverriding()) {
+		if (existingDefinition != null) {//BeanDefinition是否已经注册过
+			if (!isAllowBeanDefinitionOverriding()) { //是否允许覆盖（spring场景中不允许重复定义）
 				throw new BeanDefinitionOverrideException(beanName, beanDefinition, existingDefinition);
 			}
-			else if (existingDefinition.getRole() < beanDefinition.getRole()) {
+			else if (existingDefinition.getRole() < beanDefinition.getRole()) { //从两个方面考虑：业务方面，还是架构方面
 				// e.g. was ROLE_APPLICATION, now overriding with ROLE_SUPPORT or ROLE_INFRASTRUCTURE
 				if (logger.isInfoEnabled()) {
 					logger.info("Overriding user-defined bean definition for bean '" + beanName +
@@ -951,7 +953,7 @@ public class DefaultListableBeanFactory extends AbstractAutowireCapableBeanFacto
 			this.beanDefinitionMap.put(beanName, beanDefinition);
 		}
 		else {
-			if (hasBeanCreationStarted()) {
+			if (hasBeanCreationStarted()) { //Bean是否已经开始创建
 				// Cannot modify startup-time collection elements anymore (for stable iteration)
 				synchronized (this.beanDefinitionMap) {
 					this.beanDefinitionMap.put(beanName, beanDefinition);
@@ -964,6 +966,8 @@ public class DefaultListableBeanFactory extends AbstractAutowireCapableBeanFacto
 			}
 			else {
 				// Still in startup registration phase
+				// ConcurrentHashMap  beanDefinitionMap 虽然是线程安全的，无序，但是可以保证唯一性
+				// List beanDefinitionNames   List是有序的，确保了注册的顺序。
 				this.beanDefinitionMap.put(beanName, beanDefinition);
 				this.beanDefinitionNames.add(beanName);
 				removeManualSingletonName(beanName);
@@ -1458,6 +1462,7 @@ public class DefaultListableBeanFactory extends AbstractAutowireCapableBeanFacto
 		String[] candidateNames = BeanFactoryUtils.beanNamesForTypeIncludingAncestors(
 				this, requiredType, true, descriptor.isEager());
 		Map<String, Object> result = new LinkedHashMap<>(candidateNames.length);
+
 		for (Map.Entry<Class<?>, Object> classObjectEntry : this.resolvableDependencies.entrySet()) {
 			Class<?> autowiringType = classObjectEntry.getKey();
 			if (autowiringType.isAssignableFrom(requiredType)) {

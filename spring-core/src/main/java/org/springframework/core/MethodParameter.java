@@ -58,6 +58,7 @@ import org.springframework.util.ObjectUtils;
  * @since 2.0
  * @see org.springframework.core.annotation.SynthesizingMethodParameter
  */
+// 方法参数封装
 public class MethodParameter {
 
 	private static final Annotation[] EMPTY_ANNOTATION_ARRAY = new Annotation[0];

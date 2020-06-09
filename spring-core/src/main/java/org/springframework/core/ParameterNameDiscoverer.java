@@ -33,6 +33,8 @@ import org.springframework.lang.Nullable;
  * @author Adrian Colyer
  * @since 2.0
  */
+// 参数名发现器
+// 两种实现方式 java8， 非java8。  java8 之前 接口的参数是取不到的
 public interface ParameterNameDiscoverer {
 
 	/**

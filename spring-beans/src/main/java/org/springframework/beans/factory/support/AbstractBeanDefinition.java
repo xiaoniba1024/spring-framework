@@ -454,6 +454,7 @@ public abstract class AbstractBeanDefinition extends BeanMetadataAttributeAccess
 			return null;
 		}
 		Class<?> resolvedClass = ClassUtils.forName(className, classLoader);
+		// 将String 类型 变成 Class 类型
 		this.beanClass = resolvedClass;
 		return resolvedClass;
 	}
@@ -865,6 +866,7 @@ public abstract class AbstractBeanDefinition extends BeanMetadataAttributeAccess
 	/**
 	 * Specify property values for this bean, if any.
 	 */
+	//bean有几个属性，就会对应几个 MutablePropertyValues
 	public void setPropertyValues(MutablePropertyValues propertyValues) {
 		this.propertyValues = propertyValues;
 	}

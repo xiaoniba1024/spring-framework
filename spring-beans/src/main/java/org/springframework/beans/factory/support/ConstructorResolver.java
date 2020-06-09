@@ -158,6 +158,7 @@ class ConstructorResolver {
 			if (candidates == null) {
 				Class<?> beanClass = mbd.getBeanClass();
 				try {
+					// 返回构造器
 					candidates = (mbd.isNonPublicAccessAllowed() ?
 							beanClass.getDeclaredConstructors() : beanClass.getConstructors());
 				}
@@ -220,6 +221,8 @@ class ConstructorResolver {
 					try {
 						String[] paramNames = ConstructorPropertiesChecker.evaluate(candidate, parameterCount);
 						if (paramNames == null) {
+							// 参数名发现器
+							// 两种实现方式 java8， 非java8。  java8 之前 接口的参数是取不到的
 							ParameterNameDiscoverer pnd = this.beanFactory.getParameterNameDiscoverer();
 							if (pnd != null) {
 								paramNames = pnd.getParameterNames(candidate);
@@ -786,6 +789,7 @@ class ConstructorResolver {
 							"] - did you specify the correct bean references as arguments?");
 				}
 				try {
+					//构造器注入的依赖处理
 					Object autowiredArgument = resolveAutowiredArgument(
 							methodParam, beanName, autowiredBeanNames, converter, fallback);
 					args.rawArguments[paramIndex] = autowiredArgument;
@@ -882,6 +886,7 @@ class ConstructorResolver {
 			return injectionPoint;
 		}
 		try {
+			// 处理依赖
 			return this.beanFactory.resolveDependency(
 					new DependencyDescriptor(param, true), beanName, autowiredBeanNames, typeConverter);
 		}
