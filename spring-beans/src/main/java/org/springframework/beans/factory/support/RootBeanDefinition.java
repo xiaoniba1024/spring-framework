@@ -76,6 +76,7 @@ public class RootBeanDefinition extends AbstractBeanDefinition {
 
 	/** Package-visible field for caching if the bean is a factory bean. */
 	@Nullable
+	// 是否FactoryBean
 	volatile Boolean isFactoryBean;
 
 	/** Package-visible field for caching the return type of a generically typed factory method. */
