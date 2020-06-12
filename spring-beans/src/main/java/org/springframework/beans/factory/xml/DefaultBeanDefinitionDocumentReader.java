@@ -93,6 +93,7 @@ public class DefaultBeanDefinitionDocumentReader implements BeanDefinitionDocume
 	@Override
 	public void registerBeanDefinitions(Document doc, XmlReaderContext readerContext) {
 		this.readerContext = readerContext;
+		// doc.getDocumentElement() 是 Dom的根元素 Beans
 		doRegisterBeanDefinitions(doc.getDocumentElement());
 	}
 
@@ -125,7 +126,7 @@ public class DefaultBeanDefinitionDocumentReader implements BeanDefinitionDocume
 		// the new (child) delegate with a reference to the parent for fallback purposes,
 		// then ultimately reset this.delegate back to its original (parent) reference.
 		// this behavior emulates a stack of delegates without actually necessitating one.
-		BeanDefinitionParserDelegate parent = this.delegate;
+		BeanDefinitionParserDelegate parent = this.delegate; // 参考109小节
 		this.delegate = createDelegate(getReaderContext(), root, parent);
 
 		if (this.delegate.isDefaultNamespace(root)) {
@@ -146,7 +147,7 @@ public class DefaultBeanDefinitionDocumentReader implements BeanDefinitionDocume
 		}
 
 		preProcessXml(root);
-		parseBeanDefinitions(root, this.delegate);
+		parseBeanDefinitions(root, this.delegate); // 根元素解析
 		postProcessXml(root);
 
 		this.delegate = parent;
@@ -173,20 +174,21 @@ public class DefaultBeanDefinitionDocumentReader implements BeanDefinitionDocume
 				if (node instanceof Element) {
 					Element ele = (Element) node;
 					if (delegate.isDefaultNamespace(ele)) {
-						parseDefaultElement(ele, delegate);
+						parseDefaultElement(ele, delegate); // 默认Element解析
 					}
 					else {
-						delegate.parseCustomElement(ele);
+						delegate.parseCustomElement(ele); // 自定义Element解析
 					}
 				}
 			}
 		}
 		else {
-			delegate.parseCustomElement(root);
+			delegate.parseCustomElement(root); // 自定义Element解析
 		}
 	}
 
 	private void parseDefaultElement(Element ele, BeanDefinitionParserDelegate delegate) {
+		//判断当前元素应该按照何种方式解析
 		if (delegate.nodeNameEquals(ele, IMPORT_ELEMENT)) {
 			importBeanDefinitionResource(ele);
 		}
@@ -303,11 +305,14 @@ public class DefaultBeanDefinitionDocumentReader implements BeanDefinitionDocume
 	 * and registering it with the registry.
 	 */
 	protected void processBeanDefinition(Element ele, BeanDefinitionParserDelegate delegate) {
+		// 将元信息进行映射
 		BeanDefinitionHolder bdHolder = delegate.parseBeanDefinitionElement(ele);
 		if (bdHolder != null) {
+			// 通过装饰模式进行加工
 			bdHolder = delegate.decorateBeanDefinitionIfRequired(ele, bdHolder);
 			try {
 				// Register the final decorated instance.
+				// 注册
 				BeanDefinitionReaderUtils.registerBeanDefinition(bdHolder, getReaderContext().getRegistry());
 			}
 			catch (BeanDefinitionStoreException ex) {

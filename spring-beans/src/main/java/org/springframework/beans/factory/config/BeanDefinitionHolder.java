@@ -37,6 +37,7 @@ import org.springframework.util.StringUtils;
  * @see org.springframework.beans.factory.support.RootBeanDefinition
  * @see org.springframework.beans.factory.support.ChildBeanDefinition
  */
+// bean名称 和 BeanDefinition 结构的存储，是一个包装对象（因为java中没办法返回对多值）
 public class BeanDefinitionHolder implements BeanMetadataElement {
 
 	private final BeanDefinition beanDefinition;

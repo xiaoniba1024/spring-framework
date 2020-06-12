@@ -159,10 +159,10 @@ public class AutowiredAnnotationBeanPostProcessor extends InstantiationAwareBean
 	 */
 	@SuppressWarnings("unchecked")
 	public AutowiredAnnotationBeanPostProcessor() {
-		this.autowiredAnnotationTypes.add(Autowired.class);
-		this.autowiredAnnotationTypes.add(Value.class);
+		this.autowiredAnnotationTypes.add(Autowired.class); // Autowired 注解
+		this.autowiredAnnotationTypes.add(Value.class); // Value 注解
 		try {
-			this.autowiredAnnotationTypes.add((Class<? extends Annotation>)
+			this.autowiredAnnotationTypes.add((Class<? extends Annotation>) // Inject 注解
 					ClassUtils.forName("javax.inject.Inject", AutowiredAnnotationBeanPostProcessor.class.getClassLoader()));
 			logger.trace("JSR-330 'javax.inject.Inject' annotation found and supported for autowiring");
 		}

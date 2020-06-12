@@ -318,6 +318,7 @@ public class BeanDefinitionParserDelegate {
 	 * @param parentDefaults the parent BeanDefinitionParserDelegate (if any) defaults to fall back to
 	 * @param root the root element of the current bean definition document (or nested beans element)
 	 */
+	//移植或者填充默认值
 	protected void populateDefaults(DocumentDefaultsDefinition defaults, @Nullable DocumentDefaultsDefinition parentDefaults, Element root) {
 		String lazyInit = root.getAttribute(DEFAULT_LAZY_INIT_ATTRIBUTE);
 		if (isDefaultValue(lazyInit)) {
