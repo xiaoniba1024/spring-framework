@@ -35,7 +35,7 @@ import org.springframework.lang.Nullable;
  * @see MethodOverride
  */
 public class MethodOverrides {
-
+	//是一种组合模式
 	private final Set<MethodOverride> overrides = new CopyOnWriteArraySet<>();
 
 

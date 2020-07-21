@@ -41,6 +41,8 @@ import org.springframework.util.Assert;
  * @see org.springframework.core.type.StandardAnnotationMetadata
  */
 @SuppressWarnings("serial")
+// GenericBeanDefinition的扩展类，增加了对AnnotatedBeanDefinition接口的实现
+// 只能用于已经被注册或被扫描到的类（否则你手动new一个，它就不在容器里了，那就脱离管理了）
 public class AnnotatedGenericBeanDefinition extends GenericBeanDefinition implements AnnotatedBeanDefinition {
 
 	private final AnnotationMetadata metadata;
@@ -53,6 +55,7 @@ public class AnnotatedGenericBeanDefinition extends GenericBeanDefinition implem
 	 * Create a new AnnotatedGenericBeanDefinition for the given bean class.
 	 * @param beanClass the loaded bean class
 	 */
+	// 注意官方这个注释：已经加载进来了的Bean的Class
 	public AnnotatedGenericBeanDefinition(Class<?> beanClass) {
 		setBeanClass(beanClass);
 		this.metadata = AnnotationMetadata.introspect(beanClass);
@@ -68,6 +71,7 @@ public class AnnotatedGenericBeanDefinition extends GenericBeanDefinition implem
 	 * @param metadata the annotation metadata for the bean class in question
 	 * @since 3.1.1
 	 */
+	// @since 3.1.1 此处传入AnnotationMetadata ，也得保证对应的class已经被loaded
 	public AnnotatedGenericBeanDefinition(AnnotationMetadata metadata) {
 		Assert.notNull(metadata, "AnnotationMetadata must not be null");
 		if (metadata instanceof StandardAnnotationMetadata) {
@@ -86,6 +90,7 @@ public class AnnotatedGenericBeanDefinition extends GenericBeanDefinition implem
 	 * @param factoryMethodMetadata metadata for the selected factory method
 	 * @since 4.1.1
 	 */
+	// @since 4.1.1  可以由指定的工厂方法产生这个Bean
 	public AnnotatedGenericBeanDefinition(AnnotationMetadata metadata, MethodMetadata factoryMethodMetadata) {
 		this(metadata);
 		Assert.notNull(factoryMethodMetadata, "MethodMetadata must not be null");

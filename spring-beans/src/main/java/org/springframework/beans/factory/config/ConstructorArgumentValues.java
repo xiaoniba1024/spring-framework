@@ -42,9 +42,9 @@ import org.springframework.util.ObjectUtils;
  * @see BeanDefinition#getConstructorArgumentValues
  */
 public class ConstructorArgumentValues {
-
+	// Map数据结构，是为了快速查找
 	private final Map<Integer, ValueHolder> indexedArgumentValues = new LinkedHashMap<>();
-
+	// 列表数据结构，是为了有序查找
 	private final List<ValueHolder> genericArgumentValues = new ArrayList<>();
 
 
@@ -432,6 +432,7 @@ public class ConstructorArgumentValues {
 	/**
 	 * Holder for a constructor argument value, with an optional type
 	 * attribute indicating the target type of the actual constructor argument.
+	 * 构造函数参数的包装类（包含 type，value，name，是为了类型转换）
 	 */
 	public static class ValueHolder implements BeanMetadataElement {
 

@@ -19,13 +19,9 @@ package org.geekbang.thinking.in.spring.configuration.metadata;
 import org.geekbang.thinking.in.spring.ioc.overview.domain.User;
 import org.geekbang.thinking.in.spring.ioc.overview.enums.City;
 import org.springframework.beans.factory.annotation.Value;
-import org.springframework.beans.factory.support.DefaultListableBeanFactory;
-import org.springframework.beans.factory.xml.XmlBeanDefinitionReader;
 import org.springframework.context.annotation.AnnotationConfigApplicationContext;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.PropertySource;
-
-import java.util.Map;
 
 /**
  * 基于 Java 注解的 YAML 外部化配置示例

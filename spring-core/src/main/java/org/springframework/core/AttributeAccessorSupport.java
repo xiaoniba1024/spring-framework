@@ -35,6 +35,8 @@ import org.springframework.util.StringUtils;
  * @since 2.0
  */
 @SuppressWarnings("serial")
+// AttributeAccessor唯一抽象实现，
+// 内部基于LinkedHashMap实现了所有的接口，供其他子类继承使用 主要针对属性CRUD操作
 public abstract class AttributeAccessorSupport implements AttributeAccessor, Serializable {
 
 	/** Map with String keys and Object values. */

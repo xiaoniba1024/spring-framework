@@ -69,6 +69,7 @@ public class BeanDefinitionTests {
 		assertThat(bd.hashCode() == otherBd.hashCode()).isTrue();
 	}
 
+	// 构造函数参数相等的beanDefinition
 	@Test
 	public void beanDefinitionEqualityWithConstructorArguments() {
 		RootBeanDefinition bd = new RootBeanDefinition(TestBean.class);
@@ -90,7 +91,7 @@ public class BeanDefinitionTests {
 		assertThat(otherBd.equals(bd)).isTrue();
 		assertThat(bd.hashCode() == otherBd.hashCode()).isTrue();
 	}
-
+	// 带类型的构造函数参数相等的beanDefinition
 	@Test
 	public void beanDefinitionEqualityWithTypedConstructorArguments() {
 		RootBeanDefinition bd = new RootBeanDefinition(TestBean.class);

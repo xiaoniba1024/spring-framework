@@ -25,12 +25,14 @@ import org.springframework.lang.Nullable;
  * @author Juergen Hoeller
  * @since 2.0
  */
+// 接口提供了一个getResource()方法,用来传输一个可配置的源对象。
 public interface BeanMetadataElement {
 
 	/**
 	 * Return the configuration source {@code Object} for this metadata element
 	 * (may be {@code null}).
 	 */
+	// 返回元数据元素配置元对象
 	@Nullable
 	default Object getSource() {
 		return null;

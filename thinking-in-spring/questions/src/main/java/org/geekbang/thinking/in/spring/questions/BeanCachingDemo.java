@@ -19,14 +19,12 @@ package org.geekbang.thinking.in.spring.questions;
 import org.geekbang.thinking.in.spring.ioc.overview.domain.User;
 import org.springframework.beans.factory.ObjectFactory;
 import org.springframework.beans.factory.ObjectProvider;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.AnnotationConfigApplicationContext;
 import org.springframework.context.annotation.Bean;
-import org.springframework.context.annotation.Lazy;
 import org.springframework.context.annotation.Scope;
 
 /**
- * Bean ÊÇ·ñ»º´æÊ¾Àı
+ * Bean æ˜¯å¦ç¼“å­˜ç¤ºä¾‹
  *
  * @author <a href="mailto:mercyblitz@gmail.com">Mercy</a>
  * @see ObjectFactory
@@ -37,17 +35,17 @@ public class BeanCachingDemo {
 
     public static void main(String[] args) {
         AnnotationConfigApplicationContext context = new AnnotationConfigApplicationContext();
-        // ×¢²á Configuration Class
+        // æ³¨å†Œ Configuration Class
         context.register(BeanCachingDemo.class);
 
-        // Æô¶¯ Spring Ó¦ÓÃÉÏÏÂÎÄ
+        // å¯åŠ¨ Spring åº”ç”¨ä¸Šä¸‹æ–‡
         context.refresh();
 
-        // BeanCachingDemo ÊÇ Configuration Class£¬Singleton Scope Bean
+        // BeanCachingDemo æ˜¯ Configuration Classï¼ŒSingleton Scope Bean
         BeanCachingDemo beanCachingDemo = context.getBean(BeanCachingDemo.class);
 
         for (int i = 0; i < 9; i++) {
-            // Singleton Scope Bean ÊÇ´æÔÚ»º´æ
+            // Singleton Scope Bean æ˜¯å­˜åœ¨ç¼“å­˜
             System.out.println(beanCachingDemo == context.getBean(BeanCachingDemo.class));
         }
 
@@ -58,16 +56,16 @@ public class BeanCachingDemo {
             System.out.println(user == context.getBean(User.class));
         }
 
-        // ¹Ø±Õ Spring Ó¦ÓÃÉÏÏÂÎÄ
+        // å…³é—­ Spring åº”ç”¨ä¸Šä¸‹æ–‡
         context.close();
     }
 
     @Bean
-    @Scope("prototype") // Ô­ĞÍ scope
+    @Scope("prototype") // åŸå‹ scope
     public static User user() {
         User user = new User();
         user.setId(1L);
-        user.setName("Ğ¡Âí¸ç");
+        user.setName("å°é©¬å“¥");
         return user;
     }
 }

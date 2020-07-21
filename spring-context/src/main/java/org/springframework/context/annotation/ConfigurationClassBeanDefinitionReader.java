@@ -393,6 +393,7 @@ class ConfigurationClassBeanDefinitionReader {
 	 * definition was created externally.
 	 */
 	@SuppressWarnings("serial")
+	// 它直接继承自RootBeanDefinition   ... 源码和之前的差得不是太多，此处就不解释了
 	private static class ConfigurationClassBeanDefinition extends RootBeanDefinition implements AnnotatedBeanDefinition {
 
 		private final AnnotationMetadata annotationMetadata;

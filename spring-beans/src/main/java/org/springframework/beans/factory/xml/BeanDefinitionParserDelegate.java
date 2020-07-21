@@ -409,7 +409,8 @@ public class BeanDefinitionParserDelegate {
 	/**
 	 * Parses the supplied {@code <bean>} element. May return {@code null}
 	 * if there were errors during parse. Errors are reported to the
-	 * {@link org.springframework.beans.factory.parsing.ProblemReporter}.
+	 * {@link org.springframework.beans.factory.parsing.ProblemReporter}
+	 *  解析bean定义本身
 	 */
 	@Nullable
 	public BeanDefinitionHolder parseBeanDefinitionElement(Element ele, @Nullable BeanDefinition containingBean) {
@@ -434,9 +435,10 @@ public class BeanDefinitionParserDelegate {
 		if (containingBean == null) {
 			checkNameUniqueness(beanName, aliases, ele);
 		}
-
+		// 解析bean定义本身，而不考虑名称或别名。可能返回NULL。 如果在解析bean定义期间出现问题，则为null
 		AbstractBeanDefinition beanDefinition = parseBeanDefinitionElement(ele, beanName, containingBean);
 		if (beanDefinition != null) {
+			// 如果Bean没有定义id （beanName），则生成id
 			if (!StringUtils.hasText(beanName)) {
 				try {
 					if (containingBean != null) {
@@ -496,6 +498,7 @@ public class BeanDefinitionParserDelegate {
 	/**
 	 * Parse the bean definition itself, without regard to name or aliases. May return
 	 * {@code null} if problems occurred during the parsing of the bean definition.
+	 * 解析bean定义本身，而不考虑名称或别名。可能返回NULL。 如果在解析bean定义期间出现问题，则为null。
 	 */
 	@Nullable
 	public AbstractBeanDefinition parseBeanDefinitionElement(
@@ -513,6 +516,7 @@ public class BeanDefinitionParserDelegate {
 		}
 
 		try {
+			// 创建GenericBeanDefinition
 			AbstractBeanDefinition bd = createBeanDefinition(className, parent);
 
 			parseBeanDefinitionAttributes(ele, beanName, containingBean, bd);
@@ -553,6 +557,7 @@ public class BeanDefinitionParserDelegate {
 	 * @param beanName bean name
 	 * @param containingBean containing bean definition
 	 * @return a bean definition initialized according to the bean element attributes
+	 * 将给定bean元素的属性应用于给定bean定义
 	 */
 	public AbstractBeanDefinition parseBeanDefinitionAttributes(Element ele, String beanName,
 			@Nullable BeanDefinition containingBean, AbstractBeanDefinition bd) {
@@ -1407,7 +1412,8 @@ public class BeanDefinitionParserDelegate {
 	 * @param ele the current element
 	 * @param originalDef the current bean definition
 	 * @param containingBd the containing bean definition (if any)
-	 * @return the decorated bean definition
+	 * @return the decorated bean
+	 * 如果适用，通过命名空间处理程序装饰给定的bean定义
 	 */
 	public BeanDefinitionHolder decorateBeanDefinitionIfRequired(
 			Element ele, BeanDefinitionHolder originalDef, @Nullable BeanDefinition containingBd) {
@@ -1438,7 +1444,8 @@ public class BeanDefinitionParserDelegate {
 	 * @param node the current child node
 	 * @param originalDef the current bean definition
 	 * @param containingBd the containing bean definition (if any)
-	 * @return the decorated bean definition
+	 * @return the decorated bean
+	 * 通过名称空间处理程序装饰给定的bean定义
 	 */
 	public BeanDefinitionHolder decorateIfRequired(
 			Node node, BeanDefinitionHolder originalDef, @Nullable BeanDefinition containingBd) {
@@ -1490,6 +1497,7 @@ public class BeanDefinitionParserDelegate {
 	 * Subclasses may override the default implementation to provide a
 	 * different namespace identification mechanism.
 	 * @param node the node
+	 * 获取提供的节点的名称空间URI
 	 */
 	@Nullable
 	public String getNamespaceURI(Node node) {

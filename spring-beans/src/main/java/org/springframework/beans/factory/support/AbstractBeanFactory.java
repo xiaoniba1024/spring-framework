@@ -1433,6 +1433,7 @@ public abstract class AbstractBeanFactory extends FactoryBeanRegistrySupport imp
 	 * recreating it on next access.
 	 * @param beanName the bean name to clear the merged definition for
 	 */
+	// 删除指定bean的合并bean定义，在下次访问时重新创建它。
 	protected void clearMergedBeanDefinition(String beanName) {
 		RootBeanDefinition bd = this.mergedBeanDefinitions.get(beanName);
 		if (bd != null) {

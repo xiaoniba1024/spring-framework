@@ -25,7 +25,7 @@ import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Lazy;
 
 /**
- * {@link ObjectFactory} ÑÓ³ÙÒÀÀµ²éÕÒÊ¾Àı
+ * {@link ObjectFactory} å»¶è¿Ÿä¾èµ–æŸ¥æ‰¾ç¤ºä¾‹
  *
  * @author <a href="mailto:mercyblitz@gmail.com">Mercy</a>
  * @see ObjectFactory
@@ -36,17 +36,17 @@ public class ObjectFactoryLazyLookupDemo {
 
     public static void main(String[] args) {
         AnnotationConfigApplicationContext context = new AnnotationConfigApplicationContext();
-        // ×¢²á Configuration Class
+        // æ³¨å†Œ Configuration Class
         context.register(ObjectFactoryLazyLookupDemo.class);
 
-        // Æô¶¯ Spring Ó¦ÓÃÉÏÏÂÎÄ
+        // å¯åŠ¨ Spring åº”ç”¨ä¸Šä¸‹æ–‡
         context.refresh();
 
         ObjectFactoryLazyLookupDemo objectFactoryLazyLookupDemo = context.getBean(ObjectFactoryLazyLookupDemo.class);
 
         // userObjectFactory userObjectProvider;
 
-        // ´úÀí¶ÔÏó
+        // ä»£ç†å¯¹è±¡
         ObjectFactory<User> userObjectFactory = objectFactoryLazyLookupDemo.userObjectFactory;
         ObjectFactory<User> userObjectProvider = objectFactoryLazyLookupDemo.userObjectProvider;
 
@@ -56,13 +56,13 @@ public class ObjectFactoryLazyLookupDemo {
         System.out.println("userObjectFactory.getClass() == userObjectProvider.getClass() : " +
                 (userObjectFactory.getClass() == userObjectProvider.getClass()));
 
-        // Êµ¼Ê¶ÔÏó£¨ÑÓ³Ù²éÕÒ£©
+        // å®é™…å¯¹è±¡ï¼ˆå»¶è¿ŸæŸ¥æ‰¾ï¼‰
         System.out.println("user = " + userObjectFactory.getObject());
         System.out.println("user = " + userObjectProvider.getObject());
         System.out.println("user = " + context.getBean(User.class));
 
 
-        // ¹Ø±Õ Spring Ó¦ÓÃÉÏÏÂÎÄ
+        // å…³é—­ Spring åº”ç”¨ä¸Šä¸‹æ–‡
         context.close();
     }
 
@@ -77,7 +77,7 @@ public class ObjectFactoryLazyLookupDemo {
     public static User user() {
         User user = new User();
         user.setId(1L);
-        user.setName("Ğ¡Âí¸ç");
+        user.setName("å°é©¬å“¥");
         return user;
     }
 }

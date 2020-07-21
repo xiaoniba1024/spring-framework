@@ -31,6 +31,9 @@ import org.springframework.lang.Nullable;
  *
  * @author Rob Harrop
  * @since 2.0
+ * 简单的基于LinkedList的结构，用于在执行过程中跟踪解析过程的逻辑位置。
+ * 条目条目将添加到LinkedList处
+ * 在解析阶段中，每个点都以特定于读者的方式进行。
  */
 public final class ParseState {
 
