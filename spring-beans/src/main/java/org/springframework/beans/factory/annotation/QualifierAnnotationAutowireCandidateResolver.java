@@ -344,11 +344,13 @@ public class QualifierAnnotationAutowireCandidateResolver extends GenericTypeAwa
 	 * Determine whether the given dependency declares a value annotation.
 	 * @see Value
 	 */
+	// 拿到value注解的这个属性（若标注有@Value注解的话）
 	@Override
 	@Nullable
 	public Object getSuggestedValue(DependencyDescriptor descriptor) {
 		Object value = findValue(descriptor.getAnnotations());
 		if (value == null) {
+			// 看看方法有没有标注
 			MethodParameter methodParam = descriptor.getMethodParameter();
 			if (methodParam != null) {
 				value = findValue(methodParam.getMethodAnnotations());
@@ -363,6 +365,7 @@ public class QualifierAnnotationAutowireCandidateResolver extends GenericTypeAwa
 	@Nullable
 	protected Object findValue(Annotation[] annotationsToSearch) {
 		if (annotationsToSearch.length > 0) {   // qualifier annotations have to be local
+			// 寻找到@Value注解的value属性值
 			AnnotationAttributes attr = AnnotatedElementUtils.getMergedAnnotationAttributes(
 					AnnotatedElementUtils.forAnnotations(annotationsToSearch), this.valueAnnotationType);
 			if (attr != null) {

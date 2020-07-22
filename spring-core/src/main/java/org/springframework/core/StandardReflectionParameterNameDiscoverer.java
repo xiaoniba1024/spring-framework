@@ -45,6 +45,7 @@ public class StandardReflectionParameterNameDiscoverer implements ParameterNameD
 		return getParameterNames(ctor.getParameters());
 	}
 
+	// 因为Parameter这个类是JDK8以上才提供的
 	@Nullable
 	private String[] getParameterNames(Parameter[] parameters) {
 		String[] parameterNames = new String[parameters.length];

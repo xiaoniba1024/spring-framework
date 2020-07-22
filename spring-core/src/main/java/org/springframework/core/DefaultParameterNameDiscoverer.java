@@ -36,9 +36,12 @@ package org.springframework.core;
  * @see LocalVariableTableParameterNameDiscoverer
  * @see KotlinReflectionParameterNameDiscoverer
  */
+// Spring4.0后出现的类（伴随着StandardReflectionParameterNameDiscoverer一起出现的）
 public class DefaultParameterNameDiscoverer extends PrioritizedParameterNameDiscoverer {
 
 	public DefaultParameterNameDiscoverer() {
+		// 这里非常非常需要注意的一点是：用于存储的是一个LinkedList（见父类：PrioritizedParameterNameDiscoverer）
+		// LinkedList是先进先出的。所以for循环遍历的时候，会最先执行Kotlin、Standard、Local... 按照这个优先级
 		if (!GraalDetector.inImageCode()) {
 			if (KotlinDetector.isKotlinReflectPresent()) {
 				addDiscoverer(new KotlinReflectionParameterNameDiscoverer());

@@ -34,6 +34,7 @@ import org.springframework.lang.Nullable;
  * @author Juergen Hoeller
  * @since 2.0
  */
+// Spring2.0就出现了。它的一个原则很简单：这么多发现器，按照顺序执行，随获取到了就算谁的
 public class PrioritizedParameterNameDiscoverer implements ParameterNameDiscoverer {
 
 	private final List<ParameterNameDiscoverer> parameterNameDiscoverers = new LinkedList<>();

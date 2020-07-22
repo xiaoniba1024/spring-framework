@@ -418,10 +418,10 @@ import org.springframework.stereotype.Component;
  * @see org.springframework.core.env.Environment
  * @see org.springframework.test.context.ContextConfiguration
  */
-@Target(ElementType.TYPE)
+@Target(ElementType.TYPE) // 它只能标注在类上
 @Retention(RetentionPolicy.RUNTIME)
 @Documented
-@Component
+@Component // 它也是个Spring的组件，会被扫描
 public @interface Configuration {
 
 	/**
@@ -437,7 +437,7 @@ public @interface Configuration {
 	 * @see AnnotationBeanNameGenerator
 	 */
 	@AliasFor(annotation = Component.class)
-	String value() default "";
+	String value() default ""; //也可以自定义Bean的名称
 
 	/**
 	 * Specify whether {@code @Bean} methods should get proxied in order to enforce

@@ -28,6 +28,7 @@ import org.springframework.lang.Nullable;
  * @author Mark Fisher
  * @since 2.5
  */
+// 本接口Spring2.5就提供了
 public interface AutowireCandidateResolver {
 
 	/**
@@ -53,6 +54,7 @@ public interface AutowireCandidateResolver {
 	 * @since 5.0
 	 * @see DependencyDescriptor#isRequired()
 	 */
+	// Spring5.0后提供
 	default boolean isRequired(DependencyDescriptor descriptor) {
 		return descriptor.isRequired();
 	}
@@ -79,6 +81,7 @@ public interface AutowireCandidateResolver {
 	 * or {@code null} if none found
 	 * @since 3.0
 	 */
+	// 3.0后提供
 	@Nullable
 	default Object getSuggestedValue(DependencyDescriptor descriptor) {
 		return null;
@@ -94,6 +97,7 @@ public interface AutowireCandidateResolver {
 	 * or {@code null} if straight resolution is to be performed
 	 * @since 4.0
 	 */
+	// 4.0后提供
 	@Nullable
 	default Object getLazyResolutionProxyIfNecessary(DependencyDescriptor descriptor, @Nullable String beanName) {
 		return null;

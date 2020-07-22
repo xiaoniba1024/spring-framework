@@ -166,7 +166,9 @@ class ConfigurationClassParser {
 		for (BeanDefinitionHolder holder : configCandidates) {
 			BeanDefinition bd = holder.getBeanDefinition();
 			try {
+				// 我们使用的注解驱动，所以会到这个parse进来处理。其实内部调用都是processConfigurationClass进行解析的
 				if (bd instanceof AnnotatedBeanDefinition) {
+					//但凡有注解标注的，都会走这里来解析
 					parse(((AnnotatedBeanDefinition) bd).getMetadata(), holder.getBeanName());
 				}
 				else if (bd instanceof AbstractBeanDefinition && ((AbstractBeanDefinition) bd).hasBeanClass()) {
@@ -184,7 +186,7 @@ class ConfigurationClassParser {
 						"Failed to parse configuration class [" + bd.getBeanClassName() + "]", ex);
 			}
 		}
-
+		// 最最最后面才处理实现了DeferredImportSelector接口的类，最最后哦~~
 		this.deferredImportSelectorHandler.process();
 	}
 
@@ -218,10 +220,14 @@ class ConfigurationClassParser {
 
 
 	protected void processConfigurationClass(ConfigurationClass configClass) throws IOException {
+		// ConfigurationCondition继承自Condition接口
+		// ConfigurationPhase枚举类型的作用：ConfigurationPhase的作用就是根据条件来判断是否加载这个配置类
+		// 两个值：PARSE_CONFIGURATION 若条件不匹配就不加载此@Configuration
+		// REGISTER_BEAN：无论如何，所有@Configurations都将被解析。
 		if (this.conditionEvaluator.shouldSkip(configClass.getMetadata(), ConfigurationPhase.PARSE_CONFIGURATION)) {
 			return;
 		}
-
+		// 如果这个配置类已经存在了,后面又被@Import进来了~~~会走这里 然后做属性合并~
 		ConfigurationClass existingClass = this.configurationClasses.get(configClass);
 		if (existingClass != null) {
 			if (configClass.isImported()) {
@@ -240,12 +246,14 @@ class ConfigurationClassParser {
 		}
 
 		// Recursively process the configuration class and its superclass hierarchy.
+		// 请注意此处：while递归，只要方法不返回null，就会一直do下去~~~~~~~~
 		SourceClass sourceClass = asSourceClass(configClass);
 		do {
+			// doProcessConfigurationClassz这个方法是解析配置文件的核心方法，此处不做详细分析
 			sourceClass = doProcessConfigurationClass(configClass, sourceClass);
 		}
 		while (sourceClass != null);
-
+		// 保存我们所有的配置类  注意：它是一个LinkedHashMap，所以是有序的  这点还比较重要~~~~和bean定义信息息息相关
 		this.configurationClasses.put(configClass, configClass);
 	}
 
@@ -257,12 +265,19 @@ class ConfigurationClassParser {
 	 * @param sourceClass a source class
 	 * @return the superclass, or {@code null} if none found or previously processed
 	 */
+	// 解析@Configuration配置文件，然后加载进Bean的定义信息们
+	// 这个方法非常的重要，可以看到它加载Bean定义信息的一个顺序~~~~
 	@Nullable
 	protected final SourceClass doProcessConfigurationClass(ConfigurationClass configClass, SourceClass sourceClass)
 			throws IOException {
-
+		// 先去看看内部类  这个if判断是Spring5.x加上去的，这个我认为还是很有必要的。
+		// 因为@Import、@ImportResource这种属于lite模式的配置类，但是我们却不让他支持内部类了
 		if (configClass.getMetadata().isAnnotated(Component.class.getName())) {
 			// Recursively process any member (nested) classes first
+			// 基本逻辑：内部类也可以有多个（支持lite模式和full模式，也支持order排序）
+			// 若不是被import过的，那就顺便直接解析它（processConfigurationClass（））
+			// 另外：该内部class可以是private  也可以是static~~~(建议用private)
+			// 所以可以看到，把@Bean等定义在内部类里面，是有助于提升Bean的优先级的~~~~~
 			processMemberClasses(configClass, sourceClass);
 		}
 
@@ -302,6 +317,7 @@ class ConfigurationClassParser {
 		}
 
 		// Process any @Import annotations
+		// getImports方法的实现 很有意思
 		processImports(configClass, sourceClass, getImports(sourceClass), true);
 
 		// Process any @ImportResource annotations
@@ -509,7 +525,10 @@ class ConfigurationClassParser {
 	 * Returns {@code @Import} class, considering all meta-annotations.
 	 */
 	private Set<SourceClass> getImports(SourceClass sourceClass) throws IOException {
+		// 装载所有的搜集到的import
 		Set<SourceClass> imports = new LinkedHashSet<>();
+		// 这个集合很有意思：就是去看看所有的内嵌类、以及注解是否有@Import注解
+		// 比如看下面这个截图，会把所有的注解都给翻出来，哪怕是注解的注解
 		Set<SourceClass> visited = new LinkedHashSet<>();
 		collectImports(sourceClass, imports, visited);
 		return imports;
@@ -530,10 +549,14 @@ class ConfigurationClassParser {
 	 */
 	private void collectImports(SourceClass sourceClass, Set<SourceClass> imports, Set<SourceClass> visited)
 			throws IOException {
-
+		// 此处什么时候返回true，什么时候返回false，请操作HashMap的put方法的返回值，看什么时候返回null
+		// 答案：put一个新key，返回null。put一个已经存在的key，返回老的value值
+		// 因此此处把add放在if条件里，是比较有技巧性的（若放置的是新的，返回null，若已经存在，就返回的false，不需要用contains()进一步判断了）
 		if (visited.add(sourceClass)) {
 			for (SourceClass annotation : sourceClass.getAnnotations()) {
 				String annName = annotation.getMetadata().getClassName();
+				// 此处不能以java打头，是为了过滤源注解：比如java.lang.annotation.Target这种
+				// 并且这个注解如果已经是Import注解了，那也就停止递归了
 				if (!annName.equals(Import.class.getName())) {
 					collectImports(annotation, imports, visited);
 				}
