@@ -93,9 +93,9 @@ public class ClassPathScanningCandidateComponentProvider implements EnvironmentC
 	protected final Log logger = LogFactory.getLog(getClass());
 
 	private String resourcePattern = DEFAULT_RESOURCE_PATTERN;
-
+	// includeFilters中的就是满足过滤规则的
 	private final List<TypeFilter> includeFilters = new LinkedList<>();
-
+	// excludeFilters则是不满足过滤规则的
 	private final List<TypeFilter> excludeFilters = new LinkedList<>();
 
 	@Nullable
@@ -204,7 +204,9 @@ public class ClassPathScanningCandidateComponentProvider implements EnvironmentC
 	 */
 	@SuppressWarnings("unchecked")
 	protected void registerDefaultFilters() {
+		// 这里需要注意，默认情况下都是添加了@Component这个注解的
 		// @Component显然默认是必须要扫描的嘛
+		//（相当于@Service @Controller @Respository等都会扫描，因为这些注解都属于@Component）  另外@Configuration也属于哦
 		this.includeFilters.add(new AnnotationTypeFilter(Component.class));
 		ClassLoader cl = ClassPathScanningCandidateComponentProvider.class.getClassLoader();
 		// 下面两个是，默认也支持JSR-250规范的`@ManagedBean`和JSR-330规范的@Named注解(但是我并不建议大家使用，还是使用Spring源生的吧)
@@ -216,6 +218,7 @@ public class ClassPathScanningCandidateComponentProvider implements EnvironmentC
 		catch (ClassNotFoundException ex) {
 			// JSR-250 1.1 API (as included in Java EE 6) not available - simply skip.
 		}
+		// 如果你想Spring连你自定义的注解都扫描，自己实现一个AnnotationTypeFilter就可以啦
 		try {
 			this.includeFilters.add(new AnnotationTypeFilter(
 					((Class<? extends Annotation>) ClassUtils.forName("javax.inject.Named", cl)), false));
@@ -266,6 +269,7 @@ public class ClassPathScanningCandidateComponentProvider implements EnvironmentC
 	public void setResourceLoader(@Nullable ResourceLoader resourceLoader) {
 		this.resourcePatternResolver = ResourcePatternUtils.getResourcePatternResolver(resourceLoader);
 		this.metadataReaderFactory = new CachingMetadataReaderFactory(resourceLoader);
+		// Spring5以后才有这句，优化了bean扫描
 		this.componentsIndex = CandidateComponentsIndexLoader.loadIndex(this.resourcePatternResolver.getClassLoader());
 	}
 
@@ -312,11 +316,15 @@ public class ClassPathScanningCandidateComponentProvider implements EnvironmentC
 	 */
 	public Set<BeanDefinition> findCandidateComponents(String basePackage) {
 		// 如果是Spring5  会走这里（当然需要你手动开启~~~）
+		// 上面说过了CandidateComponentsIndex是Spring5提供的优化扫描的功能
+		// 显然这里编译器我们没有写META-INF/spring.components索引文件，所以此处不会执行Spring5 的扫描方式，
+		// 所以我暂时不看了（超大型项目才会使用Spring5的方式）
 		if (this.componentsIndex != null && indexSupportsIncludeFilters()) {
 			return addCandidateComponentsFromIndex(this.componentsIndex, basePackage);
 		}
 		else {
 			// 老方式，简单的说，就是从从磁盘里找。利用了`ResourceLoader`的子接口ResourcePatternResolver
+			//（绝大多数情况下，都是此方式）
 			return scanCandidateComponents(basePackage);
 		}
 	}
@@ -420,29 +428,43 @@ public class ClassPathScanningCandidateComponentProvider implements EnvironmentC
 	private Set<BeanDefinition> scanCandidateComponents(String basePackage) {
 		Set<BeanDefinition> candidates = new LinkedHashSet<>();
 		try {
+			// 1.根据指定包名 生成包搜索路径
+			// 通过观察resolveBasePackage()方法的实现, 我们可以在设置basePackage时, 使用形如${}的占位符, Spring会在这里进行替换 只要在Enviroment里面就行
 			// 这个构建出来的  是基础包路径，形如：classpath*:com/fsx/demo1/**/*.class
 			// 从这里可以看出：首先它会去扫描Jar包（因为他是classpath*）,所以如果我们路径是这样的：
 			// "classpath*:org/springframework/**/*.class"：它会把所有的Spring里面的类都拿出来~~~~ 所以这个是需要注意的
 			// 小技巧：classpath*:**/*.class相当于拿到你所有的所有的类。可以借助这个看看你工程里面一共多少个类。Spring项目大约1万个往上走~~~~
 			String packageSearchPath = ResourcePatternResolver.CLASSPATH_ALL_URL_PREFIX +
 					resolveBasePackage(basePackage) + '/' + this.resourcePattern;
-			// 调用ResourcePatternResolver来处理
+			//2. 资源加载器 加载搜索路径下的 所有class 转换为 Resource[]
+			// 拿着上面的路径，就可以getResources获取出所有的.class类，这个很强大~~~
+			// 真正干事的为：PathMatchingResourcePatternResolver#getResources方法
+			// 注意：这里会拿到类路径下（不包含jar包内的）的所有的.class文件 可能有上百个，然后后面再交给后面进行筛选~~~~~~~~~~~~~~~~（这个方法，其实我们也可以使用）
+			// 当然和getResourcePatternResolver和这个模版有关
 			// 注意：此处使用的实例默认为：PathMatchingResourcePatternResolver  当然你可以自己set来指定  但是一般都没有必要~~~~
 			Resource[] resources = getResourcePatternResolver().getResources(packageSearchPath);
+			// 记录日志（下面我把打印日志地方都删除）
 			boolean traceEnabled = logger.isTraceEnabled();
 			boolean debugEnabled = logger.isDebugEnabled();
-			// 然后一个个遍历，看看哪个是@Component组件，然后就注册进去
+			// 一个个遍历，看看哪个是@Component组件，然后就注册进去
 			for (Resource resource : resources) {
 				if (traceEnabled) {
 					logger.trace("Scanning " + resource);
 				}
+				//文件必须可读 否则直接返回空了
 				if (resource.isReadable()) {
 					try {
+						//读取类的 注解信息 和 类信息 ，两大信息储存到  MetadataReader
 						MetadataReader metadataReader = getMetadataReaderFactory().getMetadataReader(resource);
+						// 根据TypeFilter过滤排除组件。
+						// 注意：这里一般(默认处理的情况下)标注了默认注解的才会true，什么叫默认注解呢？就是@Component或者派生注解。还有javax....的，这里省略啦
 						if (isCandidateComponent(metadataReader)) {
+							// 把符合条件的 类转换成 BeanDefinition
 							ScannedGenericBeanDefinition sbd = new ScannedGenericBeanDefinition(metadataReader);
 							sbd.setResource(resource);
 							sbd.setSource(resource);
+							// 再次判断 如果是实体类 返回true,如果是抽象类，但是抽象方法 被 @Lookup 注解注释返回true （注意 这个和上面那个是重载的方法）
+							// 这和上面是个重载方法  个人觉得旨在处理循环引用以及@Lookup上
 							if (isCandidateComponent(sbd)) {
 								if (debugEnabled) {
 									logger.debug("Identified candidate component class: " + resource);
@@ -476,6 +498,7 @@ public class ClassPathScanningCandidateComponentProvider implements EnvironmentC
 		catch (IOException ex) {
 			throw new BeanDefinitionStoreException("I/O failure during classpath scanning", ex);
 		}
+		// 备注：此时ComponentScan这个注解还并没有解析
 		return candidates;
 	}
 
