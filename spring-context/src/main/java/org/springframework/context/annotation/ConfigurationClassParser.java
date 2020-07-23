@@ -156,8 +156,10 @@ class ConfigurationClassParser {
 		this.environment = environment;
 		this.resourceLoader = resourceLoader;
 		this.registry = registry;
+		// 这里对componentScanParser 进行初始化。持有环境、ResourceLoader、名字生成器、注册器的引用
 		this.componentScanParser = new ComponentScanAnnotationParser(
 				environment, resourceLoader, componentScanBeanNameGenerator, registry);
+		// 初始化condition的计算器，持有注册器、环境、ResourceLoader的引用
 		this.conditionEvaluator = new ConditionEvaluator(registry, environment, resourceLoader);
 	}
 
@@ -295,15 +297,22 @@ class ConfigurationClassParser {
 		}
 
 		// Process any @ComponentScan annotations
+		// 拿到该类上面所有的@ComponentScan注解，包含重复注解
 		Set<AnnotationAttributes> componentScans = AnnotationConfigUtils.attributesForRepeatable(
 				sourceClass.getMetadata(), ComponentScans.class, ComponentScan.class);
+		// 不为空，且此类不会被跳过,就开始解析吧
 		if (!componentScans.isEmpty() &&
 				!this.conditionEvaluator.shouldSkip(sourceClass.getMetadata(), ConfigurationPhase.REGISTER_BEAN)) {
 			for (AnnotationAttributes componentScan : componentScans) {
 				// The config class is annotated with @ComponentScan -> perform the scan immediately
+				// 最终委托给了componentScanParser去完成这件事：至于componentScanParser是什么呢？下面有解释
+				// 备注：这个方法虽然有返回值，但是其实内部都已经把Bean定义信息加入到工厂里面去了
 				Set<BeanDefinitionHolder> scannedBeanDefinitions =
 						this.componentScanParser.parse(componentScan, sourceClass.getMetadata().getClassName());
 				// Check the set of scanned definitions for any further config classes and parse recursively if needed
+				//这里面有一个重要的一步，还需要把每个Bean检测一遍。
+				// 因为Scan出来的Bean，还有可能是@Configuration的，或者标注有@Import等等一些列注解的，
+				// 因此需要再次交给parse一遍，防止疏漏
 				for (BeanDefinitionHolder holder : scannedBeanDefinitions) {
 					BeanDefinition bdCand = holder.getBeanDefinition().getOriginatingBeanDefinition();
 					if (bdCand == null) {

@@ -161,7 +161,8 @@ public class ClassPathBeanDefinitionScanner extends ClassPathScanningCandidateCo
 
 		Assert.notNull(registry, "BeanDefinitionRegistry must not be null");
 		this.registry = registry;
-
+		// 我们发现这个useDefaultFilters特别重要，默认情况下他是true，只会扫描默认的注解们
+		// 至于是哪些注解，看下面
 		if (useDefaultFilters) {
 			registerDefaultFilters();
 		}
@@ -273,22 +274,31 @@ public class ClassPathBeanDefinitionScanner extends ClassPathScanningCandidateCo
 		Assert.notEmpty(basePackages, "At least one base package must be specified");
 		Set<BeanDefinitionHolder> beanDefinitions = new LinkedHashSet<>();
 		for (String basePackage : basePackages) {
+			// 这里面findCandidateComponents是核心。这边就不再详解了，因为上面贴出的那篇博文已经有详解了
+			// 总之就是找到候选的Bean定义们
+			//findCandidateComponents这个方法需要注意，Spring5以后走的可能会从索引上走 addCandidateComponentsFromIndex()
+			// 如果不是Spring5  会走原来的逻辑scanCandidateComponents()
 			Set<BeanDefinition> candidates = findCandidateComponents(basePackage);
 			for (BeanDefinition candidate : candidates) {
 				ScopeMetadata scopeMetadata = this.scopeMetadataResolver.resolveScopeMetadata(candidate);
 				candidate.setScope(scopeMetadata.getScopeName());
 				String beanName = this.beanNameGenerator.generateBeanName(candidate, this.registry);
+				// 给刚扫描出来的Bean定义设置一些默认值
 				if (candidate instanceof AbstractBeanDefinition) {
 					postProcessBeanDefinition((AbstractBeanDefinition) candidate, beanName);
 				}
+				//解析@Primary、@Lazy...等等基础注解
 				if (candidate instanceof AnnotatedBeanDefinition) {
 					AnnotationConfigUtils.processCommonDefinitionAnnotations((AnnotatedBeanDefinition) candidate);
 				}
+				// 检查一些Bean定义，若之前已经存在了，看看采用什么策略吧（覆盖or不管？）
+				// 原则：在同意文件内，覆盖吧  在不同文件内  不管吧~~~~
 				if (checkCandidate(beanName, candidate)) {
 					BeanDefinitionHolder definitionHolder = new BeanDefinitionHolder(candidate, beanName);
 					definitionHolder =
 							AnnotationConfigUtils.applyScopedProxyMode(scopeMetadata, definitionHolder, this.registry);
 					beanDefinitions.add(definitionHolder);
+					// 内部就已经把该Bean定义注册进去了，所以外部可以不用再重复注册了
 					registerBeanDefinition(definitionHolder, this.registry);
 				}
 			}

@@ -204,8 +204,10 @@ public class ClassPathScanningCandidateComponentProvider implements EnvironmentC
 	 */
 	@SuppressWarnings("unchecked")
 	protected void registerDefaultFilters() {
+		// @Component显然默认是必须要扫描的嘛
 		this.includeFilters.add(new AnnotationTypeFilter(Component.class));
 		ClassLoader cl = ClassPathScanningCandidateComponentProvider.class.getClassLoader();
+		// 下面两个是，默认也支持JSR-250规范的`@ManagedBean`和JSR-330规范的@Named注解(但是我并不建议大家使用，还是使用Spring源生的吧)
 		try {
 			this.includeFilters.add(new AnnotationTypeFilter(
 					((Class<? extends Annotation>) ClassUtils.forName("javax.annotation.ManagedBean", cl)), false));
@@ -309,10 +311,12 @@ public class ClassPathScanningCandidateComponentProvider implements EnvironmentC
 	 * @return a corresponding Set of autodetected bean definitions
 	 */
 	public Set<BeanDefinition> findCandidateComponents(String basePackage) {
+		// 如果是Spring5  会走这里（当然需要你手动开启~~~）
 		if (this.componentsIndex != null && indexSupportsIncludeFilters()) {
 			return addCandidateComponentsFromIndex(this.componentsIndex, basePackage);
 		}
 		else {
+			// 老方式，简单的说，就是从从磁盘里找。利用了`ResourceLoader`的子接口ResourcePatternResolver
 			return scanCandidateComponents(basePackage);
 		}
 	}
@@ -412,15 +416,22 @@ public class ClassPathScanningCandidateComponentProvider implements EnvironmentC
 		}
 		return candidates;
 	}
-
+	// 私有方法，根据基础包名，去扫描所有的符合条件的类~~~
 	private Set<BeanDefinition> scanCandidateComponents(String basePackage) {
 		Set<BeanDefinition> candidates = new LinkedHashSet<>();
 		try {
+			// 这个构建出来的  是基础包路径，形如：classpath*:com/fsx/demo1/**/*.class
+			// 从这里可以看出：首先它会去扫描Jar包（因为他是classpath*）,所以如果我们路径是这样的：
+			// "classpath*:org/springframework/**/*.class"：它会把所有的Spring里面的类都拿出来~~~~ 所以这个是需要注意的
+			// 小技巧：classpath*:**/*.class相当于拿到你所有的所有的类。可以借助这个看看你工程里面一共多少个类。Spring项目大约1万个往上走~~~~
 			String packageSearchPath = ResourcePatternResolver.CLASSPATH_ALL_URL_PREFIX +
 					resolveBasePackage(basePackage) + '/' + this.resourcePattern;
+			// 调用ResourcePatternResolver来处理
+			// 注意：此处使用的实例默认为：PathMatchingResourcePatternResolver  当然你可以自己set来指定  但是一般都没有必要~~~~
 			Resource[] resources = getResourcePatternResolver().getResources(packageSearchPath);
 			boolean traceEnabled = logger.isTraceEnabled();
 			boolean debugEnabled = logger.isDebugEnabled();
+			// 然后一个个遍历，看看哪个是@Component组件，然后就注册进去
 			for (Resource resource : resources) {
 				if (traceEnabled) {
 					logger.trace("Scanning " + resource);
