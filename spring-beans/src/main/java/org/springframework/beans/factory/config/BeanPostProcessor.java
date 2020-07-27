@@ -57,6 +57,9 @@ import org.springframework.lang.Nullable;
  */
 public interface BeanPostProcessor {
 
+	// 在Bean实例化/依赖注入完毕以及自定义的初始化方法之前调用。什么叫自定义初始化方法：比如init-method、比如@PostConstruct标、比如实现InitailztingBean接口的方法等等
+	// bean:这个Bean实例  beanName：bean名称
+
 	/**
 	 * Apply this {@code BeanPostProcessor} to the given new bean instance <i>before</i> any bean
 	 * initialization callbacks (like InitializingBean's {@code afterPropertiesSet}
@@ -96,6 +99,7 @@ public interface BeanPostProcessor {
 	 * @see org.springframework.beans.factory.InitializingBean#afterPropertiesSet
 	 * @see org.springframework.beans.factory.FactoryBean
 	 */
+	// 在上面基础上，初始化方法之后调用
 	@Nullable
 	default Object postProcessAfterInitialization(Object bean, String beanName) throws BeansException {
 		return bean;

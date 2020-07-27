@@ -324,6 +324,8 @@ public abstract class WebApplicationContextUtils {
 	@SuppressWarnings("serial")
 	private static class RequestObjectFactory implements ObjectFactory<ServletRequest>, Serializable {
 
+		// 它每次返回的是和当前线程上下文绑定的一个request副本。至于怎么和上下文绑定的，下面贴出参考链接
+		// 有了这些解
 		@Override
 		public ServletRequest getObject() {
 			return currentRequestAttributes().getRequest();

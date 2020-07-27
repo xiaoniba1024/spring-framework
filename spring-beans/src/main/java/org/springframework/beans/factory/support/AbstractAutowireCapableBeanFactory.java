@@ -172,8 +172,12 @@ public abstract class AbstractAutowireCapableBeanFactory extends AbstractBeanFac
 	/**
 	 * Create a new AbstractAutowireCapableBeanFactory.
 	 */
+	// 父类空构造器有这么些语句
 	public AbstractAutowireCapableBeanFactory() {
 		super();
+		// 这里是重点。忽略自动装配。这里指定的都是接口。什么意思呢？
+		// ignoreDependencyInterface的真正意思是在自动装配时忽略指定接口的实现类中，对外的依赖。
+		// （这里面注意：@Autowired和它的关系，其实是有坑的，后续会专门讲解这个坑）
 		ignoreDependencyInterface(BeanNameAware.class);
 		ignoreDependencyInterface(BeanFactoryAware.class);
 		ignoreDependencyInterface(BeanClassLoaderAware.class);
@@ -183,6 +187,7 @@ public abstract class AbstractAutowireCapableBeanFactory extends AbstractBeanFac
 	 * Create a new AbstractAutowireCapableBeanFactory with the given parent.
 	 * @param parentBeanFactory parent bean factory, or {@code null} if none
 	 */
+	// 给设置父的BeanFactory，若存在的话
 	public AbstractAutowireCapableBeanFactory(@Nullable BeanFactory parentBeanFactory) {
 		this();
 		setParentBeanFactory(parentBeanFactory);

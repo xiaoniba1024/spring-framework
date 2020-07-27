@@ -92,6 +92,8 @@ public interface SmartLifecycle extends Lifecycle, Phased {
 	 * @see LifecycleProcessor#onRefresh()
 	 * @see ConfigurableApplicationContext#refresh()
 	 */
+	// 是否伴随这容器的启动而启动  true表示容器refreshed它就会启动了
+	// false：必须显示的执行了它的start()才行
 	default boolean isAutoStartup() {
 		return true;
 	}
@@ -130,6 +132,7 @@ public interface SmartLifecycle extends Lifecycle, Phased {
 	 */
 	@Override
 	default int getPhase() {
+		// 权重值
 		return DEFAULT_PHASE;
 	}
 

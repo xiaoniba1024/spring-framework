@@ -798,6 +798,7 @@ public class DefaultListableBeanFactory extends AbstractAutowireCapableBeanFacto
 				new BeanDefinitionHolder(mbd, beanName, getAliases(beanDefinitionName)), descriptor);
 	}
 
+	// 这一步说白了：就是把前面已经保存在IOC容器里的BeanDefinition定义信息
 	@Override
 	public BeanDefinition getBeanDefinition(String beanName) throws NoSuchBeanDefinitionException {
 		BeanDefinition bd = this.beanDefinitionMap.get(beanName);
@@ -853,15 +854,24 @@ public class DefaultListableBeanFactory extends AbstractAutowireCapableBeanFacto
 
 		// Iterate over a copy to allow for init methods which in turn register new bean definitions.
 		// While this may not be part of the regular factory bootstrap, it does otherwise work fine.
+		// 此处目的，把所有的bean定义信息名称，赋值到一个新的集合中
 		List<String> beanNames = new ArrayList<>(this.beanDefinitionNames);
 
 		// Trigger initialization of all non-lazy singleton beans...
 		for (String beanName : beanNames) {
+			// Bean定义公共的抽象类是AbstractBeanDefinition，
+			// 普通的Bean在Spring加载Bean定义的时候，实例化出来的是GenericBeanDefinition，
+			// 而Spring上下文包括实例化所有Bean用的AbstractBeanDefinition是RootBeanDefinition，
+			// 这时候就使用getMergedLocalBeanDefinition方法做了一次转化，将非RootBeanDefinition转换为RootBeanDefinition以供后续操作
 			RootBeanDefinition bd = getMergedLocalBeanDefinition(beanName);
+			// 不是抽象类&&是单例&&不是懒加载
 			if (!bd.isAbstract() && bd.isSingleton() && !bd.isLazyInit()) {
+				// 这是Spring提供的对工程bean模式的支持：比如第三方框架的继承经常采用这种方式
+				// 如果是工厂Bean，那就会此工厂Bean放进去
 				if (isFactoryBean(beanName)) {
 					Object bean = getBean(FACTORY_BEAN_PREFIX + beanName);
 					if (bean instanceof FactoryBean) {
+						// 拿到工厂Bean本省，注意有前缀为：FACTORY_BEAN_PREFIX
 						final FactoryBean<?> factory = (FactoryBean<?>) bean;
 						boolean isEagerInit;
 						if (System.getSecurityManager() != null && factory instanceof SmartFactoryBean) {
@@ -873,18 +883,25 @@ public class DefaultListableBeanFactory extends AbstractAutowireCapableBeanFacto
 							isEagerInit = (factory instanceof SmartFactoryBean &&
 									((SmartFactoryBean<?>) factory).isEagerInit());
 						}
+						// true：表示渴望马上被初始化的，那就拿上执行初始化~
 						if (isEagerInit) {
 							getBean(beanName);
 						}
 					}
 				}
-				else {
+				else { // 这里，就是普通单例Bean正式初始化了~  核心逻辑在方法：doGetBean
+					// 关于doGetBean方法的详解：下面有贴出博文，专文讲解
 					getBean(beanName);
 				}
 			}
 		}
 
 		// Trigger post-initialization callback for all applicable beans...
+		// SmartInitializingSingleton：所有非lazy单例Bean实例化完成后的回调方法 Spring4.1才提供
+		// SmartInitializingSingleton的afterSingletonsInstantiated方法是在所有单例bean都已经被创建后执行的
+		// InitializingBean#afterPropertiesSet 是在仅仅自己被创建好了执行的
+		// 比如EventListenerMethodProcessor它在afterSingletonsInstantiated方法里就去处理所有的Bean的方法
+		// 看看哪些被标注了@EventListener注解，提取处理也作为一个Listener放到容器addApplicationListener里面去
 		for (String beanName : beanNames) {
 			Object singletonInstance = getSingleton(beanName);
 			if (singletonInstance instanceof SmartInitializingSingleton) {
@@ -896,6 +913,7 @@ public class DefaultListableBeanFactory extends AbstractAutowireCapableBeanFacto
 					}, getAccessControlContext());
 				}
 				else {
+					// 比如：ScheduledAnnotationBeanPostProcessor CacheAspectSupport  MBeanExporter等等
 					smartSingleton.afterSingletonsInstantiated();
 				}
 			}
