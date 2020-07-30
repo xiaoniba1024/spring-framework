@@ -92,6 +92,7 @@ public interface ConfigurableWebApplicationContext extends WebApplicationContext
 	 * <p>If not set, the implementation is supposed to use a default for the
 	 * given namespace or the root web application context, as appropriate.
 	 */
+	// Spring配置文件的地方 比如默认位置为：/WEB-INF/applicationContext.xml
 	void setConfigLocation(String configLocation);
 
 	/**

@@ -33,8 +33,13 @@ import org.springframework.lang.Nullable;
  * @author Juergen Hoeller
  * @since 1.1
  */
+// 简而言之，就是根据RootBeanDefinition，去实例化一个实例（相当于new了一个对象而已，bean的具体的属性在此时并未赋值）
 public interface InstantiationStrategy {
 
+	// 下面是他的三个重载方法
+	// owner：这个Bean定义所属的BeanFactory工厂
+	// args：构造函数的参数（大多数情况下都用无参构造）
+	// factoryBean:factoryMethod  也支持工厂方法方式创建实例（注意此factoryBean非我们所常指的接口：FactoryBean哦~）
 	/**
 	 * Return an instance of the bean with the given name in this factory.
 	 * @param bd the bean definition

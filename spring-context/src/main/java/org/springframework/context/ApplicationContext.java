@@ -62,6 +62,7 @@ public interface ApplicationContext extends EnvironmentCapable, ListableBeanFact
 	 * Return the unique id of this application context.
 	 * @return the unique id of the context, or {@code null} if none
 	 */
+	// 容器的unique id
 	@Nullable
 	String getId();
 
@@ -69,18 +70,22 @@ public interface ApplicationContext extends EnvironmentCapable, ListableBeanFact
 	 * Return a name for the deployed application that this context belongs to.
 	 * @return a name for the deployed application, or the empty String by default
 	 */
+	// 部署的应用的名称 web应用一般会把servletContext.getContextPath()赋值给他
+	// 非web应用就是""
 	String getApplicationName();
 
 	/**
 	 * Return a friendly name for this context.
 	 * @return a display name for this context (never {@code null})
 	 */
+	// 该应用context展示的名称
 	String getDisplayName();
 
 	/**
 	 * Return the timestamp when this context was first loaded.
 	 * @return the timestamp (ms) when this context was first loaded
 	 */
+	// 容器首次被加载、启动的时间
 	long getStartupDate();
 
 	/**
@@ -88,6 +93,7 @@ public interface ApplicationContext extends EnvironmentCapable, ListableBeanFact
 	 * and this is the root of the context hierarchy.
 	 * @return the parent context, or {@code null} if there is no parent
 	 */
+	// 获取父容器 有可能为null
 	@Nullable
 	ApplicationContext getParent();
 
@@ -112,6 +118,7 @@ public interface ApplicationContext extends EnvironmentCapable, ListableBeanFact
 	 * @see ConfigurableApplicationContext#refresh()
 	 * @see ConfigurableApplicationContext#getBeanFactory()
 	 */
+	// 上面都没什么大作用，这个方法：虽然不继承AutowireCapableBeanFactory,但是我们可通过此方法得到它，从而用它的相关功能
 	AutowireCapableBeanFactory getAutowireCapableBeanFactory() throws IllegalStateException;
 
 }

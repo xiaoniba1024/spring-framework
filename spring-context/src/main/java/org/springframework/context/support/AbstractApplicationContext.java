@@ -125,6 +125,7 @@ import org.springframework.util.ReflectionUtils;
  * @see org.springframework.context.ApplicationListener
  * @see org.springframework.context.MessageSource
  */
+// 此处只实现了ConfigurableApplicationContext这个接口
 public abstract class AbstractApplicationContext extends DefaultResourceLoader
 		implements ConfigurableApplicationContext {
 
@@ -155,6 +156,7 @@ public abstract class AbstractApplicationContext extends DefaultResourceLoader
 	static {
 		// Eagerly load the ContextClosedEvent class to avoid weird classloader issues
 		// on application shutdown in WebLogic 8.1. (Reported by Dustin Woods.)
+		// 这里就把ContextClosedEvent 加载进来，为了兼容WebLogic 可能的一个bug
 		ContextClosedEvent.class.getName();
 	}
 
@@ -199,6 +201,7 @@ public abstract class AbstractApplicationContext extends DefaultResourceLoader
 	private ResourcePatternResolver resourcePatternResolver;
 
 	/** LifecycleProcessor for managing the lifecycle of beans within this context. */
+	// 然后就是很多字段，保存了一些设置信息。比如：等等
 	@Nullable
 	private LifecycleProcessor lifecycleProcessor;
 
@@ -1298,7 +1301,11 @@ public abstract class AbstractApplicationContext extends DefaultResourceLoader
 	//---------------------------------------------------------------------
 	// Implementation of ListableBeanFactory interface
 	//---------------------------------------------------------------------
+	// 这几个方法特比特殊：子类中有实现了接口AnnotationConfigRegistry的，方法签名和这个是一模一样的。所以子类虽然实现了AnnotationConfigRegistry接口，但并不需要再实现这个方法亦可
 
+	// 使用起来需要注意的是，这里借助的是getBeanFactory()：属于ListableBeanFactory这个二级接口的方法
+	// 而这个二级接口说得很清楚：它去查找的时候，不会考虑层级关系。（也就是说不去父容器找）
+	// 所以使用这三个方法的时候要注意。若你确定Bean已经加载进来了，不妨也把父容器也考虑一把
 	@Override
 	public boolean containsBeanDefinition(String beanName) {
 		return getBeanFactory().containsBeanDefinition(beanName);
@@ -1493,6 +1500,7 @@ public abstract class AbstractApplicationContext extends DefaultResourceLoader
 	 * @throws IllegalStateException if already initialized and multiple refresh
 	 * attempts are not supported
 	 */
+	// 子类必须实现这个方法：子类可以创建一个新的BeanFactory，或者直接指向自己一个已经hold的引用（GenericApplicationContext就是指向自己已经持有的）
 	protected abstract void refreshBeanFactory() throws BeansException, IllegalStateException;
 
 	/**
@@ -1500,6 +1508,7 @@ public abstract class AbstractApplicationContext extends DefaultResourceLoader
 	 * This method gets invoked by {@link #close()} after all other shutdown work.
 	 * <p>Should never throw an exception but rather log shutdown failures.
 	 */
+	// 销毁BeanFactory  this.beanFactory=null
 	protected abstract void closeBeanFactory();
 
 	/**
@@ -1515,6 +1524,7 @@ public abstract class AbstractApplicationContext extends DefaultResourceLoader
 	 * @see #refreshBeanFactory()
 	 * @see #closeBeanFactory()
 	 */
+	// refreshBeanFactory这里肯定已经有工厂实例了，这里直接返回呗
 	@Override
 	public abstract ConfigurableListableBeanFactory getBeanFactory() throws IllegalStateException;
 

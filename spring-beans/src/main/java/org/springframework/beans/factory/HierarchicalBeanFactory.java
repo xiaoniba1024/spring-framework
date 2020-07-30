@@ -31,11 +31,14 @@ import org.springframework.lang.Nullable;
  * @since 07.07.2003
  * @see org.springframework.beans.factory.config.ConfigurableBeanFactory#setParentBeanFactory
  */
+// 分层的Bean工厂
 public interface HierarchicalBeanFactory extends BeanFactory {
 
 	/**
 	 * Return the parent bean factory, or {@code null} if there is none.
 	 */
+	// 返回本Bean工厂的父工厂（至于父工厂怎么设置进去的，却放在了三级接口（个人感觉是Spring的Bug哈哈））
+	// 这个方法实现了工厂的分层
 	@Nullable
 	BeanFactory getParentBeanFactory();
 
@@ -48,6 +51,7 @@ public interface HierarchicalBeanFactory extends BeanFactory {
 	 * @return whether a bean with the given name is defined in the local factory
 	 * @see BeanFactory#containsBean
 	 */
+	// 本地工厂是否包含这个Bean（忽略其他所有父工厂）。这也是分层思想的体现。
 	boolean containsLocalBean(String name);
 
 }

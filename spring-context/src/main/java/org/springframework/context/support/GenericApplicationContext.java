@@ -99,9 +99,10 @@ public class GenericApplicationContext extends AbstractApplicationContext implem
 	private ResourceLoader resourceLoader;
 
 	private boolean customClassLoader = false;
-
+	// 保证只会被刷新一次
 	private final AtomicBoolean refreshed = new AtomicBoolean();
-
+	// 和其他在每次refresh时都创建一个新的内部BeanFactory实例的ApplicationContext实例不同
+	// 本类中的BeanFactory从一开始就创建好并可在其中注册bean definitions，refresh方法可能在其中只调用一次（并不会每次刷新的时候都会去调用的）
 
 	/**
 	 * Create a new GenericApplicationContext.

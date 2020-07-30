@@ -1944,6 +1944,7 @@ public abstract class AbstractBeanFactory extends FactoryBeanRegistrySupport imp
 	 * @see #containsBean
 	 * @see org.springframework.beans.factory.ListableBeanFactory#containsBeanDefinition
 	 */
+	// 效果同：ListableBeanFactory#containsBeanDefinition  实现类：DefaultListableBeanFactory
 	protected abstract boolean containsBeanDefinition(String beanName);
 
 	/**
@@ -1965,6 +1966,7 @@ public abstract class AbstractBeanFactory extends FactoryBeanRegistrySupport imp
 	 * @see ChildBeanDefinition
 	 * @see org.springframework.beans.factory.config.ConfigurableListableBeanFactory#getBeanDefinition
 	 */
+	// 效果同：ConfigurableListableBeanFactory#getBeanDefinition  实现类：DefaultListableBeanFactory
 	protected abstract BeanDefinition getBeanDefinition(String beanName) throws BeansException;
 
 	/**
@@ -1978,6 +1980,7 @@ public abstract class AbstractBeanFactory extends FactoryBeanRegistrySupport imp
 	 * @return a new instance of the bean
 	 * @throws BeanCreationException if the bean could not be created
 	 */
+	// 创建Bean的复杂逻辑，子类去实现。(子类：AbstractAutowireCapableBeanFactory)
 	protected abstract Object createBean(String beanName, RootBeanDefinition mbd, @Nullable Object[] args)
 			throws BeanCreationException;
 

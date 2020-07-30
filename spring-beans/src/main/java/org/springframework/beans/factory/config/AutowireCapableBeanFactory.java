@@ -59,8 +59,10 @@ import org.springframework.lang.Nullable;
  * @see org.springframework.beans.factory.config.ConfigurableListableBeanFactory
  * @see org.springframework.context.ApplicationContext#getAutowireCapableBeanFactory()
  */
+// 自动装配的Bean工厂
 public interface AutowireCapableBeanFactory extends BeanFactory {
 
+	// 用于标识外部自动装配功能是否可用。但是此标识不影响正常的（基于注解的等）自动装配功能的使用
 	/**
 	 * Constant that indicates no externally defined autowiring. Note that
 	 * BeanFactoryAware etc and annotation-driven injection will still be applied.
@@ -68,6 +70,7 @@ public interface AutowireCapableBeanFactory extends BeanFactory {
 	 * @see #autowire
 	 * @see #autowireBeanProperties
 	 */
+	// 不注入
 	int AUTOWIRE_NO = 0;
 
 	/**
@@ -77,6 +80,7 @@ public interface AutowireCapableBeanFactory extends BeanFactory {
 	 * @see #autowire
 	 * @see #autowireBeanProperties
 	 */
+	// 根据名称注入
 	int AUTOWIRE_BY_NAME = 1;
 
 	/**
@@ -86,6 +90,7 @@ public interface AutowireCapableBeanFactory extends BeanFactory {
 	 * @see #autowire
 	 * @see #autowireBeanProperties
 	 */
+	// 根据类型注入
 	int AUTOWIRE_BY_TYPE = 2;
 
 	/**
@@ -94,6 +99,7 @@ public interface AutowireCapableBeanFactory extends BeanFactory {
 	 * @see #createBean
 	 * @see #autowire
 	 */
+	// 根据构造器注入
 	int AUTOWIRE_CONSTRUCTOR = 3;
 
 	/**
@@ -104,6 +110,7 @@ public interface AutowireCapableBeanFactory extends BeanFactory {
 	 * @deprecated as of Spring 3.0: If you are using mixed autowiring strategies,
 	 * prefer annotation-based autowiring for clearer demarcation of autowiring needs.
 	 */
+	// 标识自动识别一种装配策略来实现自动装配（Spring3.0后废弃）
 	@Deprecated
 	int AUTOWIRE_AUTODETECT = 4;
 
@@ -136,6 +143,9 @@ public interface AutowireCapableBeanFactory extends BeanFactory {
 	 * @return the new bean instance
 	 * @throws BeansException if instantiation or wiring failed
 	 */
+	// 创建一个给定Class的实例。它会处理各种带有注解的域和方法，并且会调用所有Bean初始化时所需要调用的回调函数
+	// 它会执行所有的关于Bean生命周期的接口方法如BeanPostProcessor
+	// 此方法并不意味着by-name或者by-type方式的自动装配，如果需要使用这写功能，可以使用其下面的重载方法
 	<T> T createBean(Class<T> beanClass) throws BeansException;
 
 	/**
@@ -148,6 +158,10 @@ public interface AutowireCapableBeanFactory extends BeanFactory {
 	 * @param existingBean the existing bean instance
 	 * @throws BeansException if wiring failed
 	 */
+	// 通过调用给定Bean的after-instantiation及post-processing接口，对bean进行装配值
+	// 此方法主要是用于处理Bean中带有注解的字段和方法。
+	// 此方法并不意味着by-name或者by-type方式的自动装配，如果需要使用这些功能，可以使用其重载方法autowireBeanProperties
+	// 只会调用populateBean
 	void autowireBean(Object existingBean) throws BeansException;
 
 	/**
@@ -167,6 +181,9 @@ public interface AutowireCapableBeanFactory extends BeanFactory {
 	 * @throws BeansException if the initialization failed
 	 * @see #initializeBean
 	 */
+	// 配置参数中指定的bean，包括自动装配其域，对其应用如setBeanName功能的回调函数。并且会调用其所有注册的post processor.
+	// beanName表示在Bean定义中的名称。
+	// populateBean和initializeBean都会被调用
 	Object configureBean(Object existingBean, String beanName) throws BeansException;
 
 
@@ -191,6 +208,9 @@ public interface AutowireCapableBeanFactory extends BeanFactory {
 	 * @see #AUTOWIRE_BY_TYPE
 	 * @see #AUTOWIRE_CONSTRUCTOR
 	 */
+	// 和上面的区别为：创建这个Bean的时候可以指定autowireMode，然后可以把它需要注入的Bean都注入进来（这个Mode会放在Bean定义里，在依赖注入的时候会有用）
+	// Bean定义的默认值为：autowireMode = AUTOWIRE_NO;显然是不会开启自动装配的
+	// 在populateBean()给属性赋值（依赖注入的时候，会使用到此模式）
 	Object createBean(Class<?> beanClass, int autowireMode, boolean dependencyCheck) throws BeansException;
 
 	/**
@@ -219,6 +239,9 @@ public interface AutowireCapableBeanFactory extends BeanFactory {
 	 * @see #applyBeanPostProcessorsBeforeInitialization
 	 * @see #applyBeanPostProcessorsAfterInitialization
 	 */
+	// 通过指定的自动装配策略来初始化一个Bean 注意：他会创建一个新的Bean
+	// 需要注意的是：此方法不会调用Bean上注册的诸如BeanPostProcessors的回调方法
+	// 只会调用populateBean
 	Object autowire(Class<?> beanClass, int autowireMode, boolean dependencyCheck) throws BeansException;
 
 	/**
@@ -239,6 +262,10 @@ public interface AutowireCapableBeanFactory extends BeanFactory {
 	 * @see #AUTOWIRE_BY_TYPE
 	 * @see #AUTOWIRE_NO
 	 */
+	// 通过指定的自动装配方式来对给定的已经存在的Bean进行自动装配
+	// 不过会调用指定Bean注册的BeanPostProcessors等回调函数来初始化Bean。
+	// 如果指定装配方式为AUTOWIRE_NO的话，不会自动装配属性，但是，但是，但是依然会调用BeanPiostProcesser等回调方法。
+	// 只会调用populateBean
 	void autowireBeanProperties(Object existingBean, int autowireMode, boolean dependencyCheck)
 			throws BeansException;
 
@@ -264,6 +291,8 @@ public interface AutowireCapableBeanFactory extends BeanFactory {
 	 * @throws BeansException if applying the property values failed
 	 * @see #autowireBeanProperties
 	 */
+	// 简单的说，就是把Bean定义信息里面的一些东西，赋值到已经存在的Bean里面
+	// 除了InstantiationAwareBeanPostProcessor的回调方法外，此方法不会在Bean上应用其它的例如BeanPostProcessors
 	void applyBeanPropertyValues(Object existingBean, String beanName) throws BeansException;
 
 	/**
@@ -283,6 +312,7 @@ public interface AutowireCapableBeanFactory extends BeanFactory {
 	 * @throws BeansException if the initialization failed
 	 * @see #ORIGINAL_INSTANCE_SUFFIX
 	 */
+	// 实例化这个Bean，会调用所有的postProcessors 方法
 	Object initializeBean(Object existingBean, String beanName) throws BeansException;
 
 	/**
@@ -299,6 +329,7 @@ public interface AutowireCapableBeanFactory extends BeanFactory {
 	 * @see BeanPostProcessor#postProcessBeforeInitialization
 	 * @see #ORIGINAL_INSTANCE_SUFFIX
 	 */
+	// 调用参数中指定Bean的postProcessBeforeInitialization方法  初始化之前、之后
 	Object applyBeanPostProcessorsBeforeInitialization(Object existingBean, String beanName)
 			throws BeansException;
 
@@ -316,6 +347,7 @@ public interface AutowireCapableBeanFactory extends BeanFactory {
 	 * @see BeanPostProcessor#postProcessAfterInitialization
 	 * @see #ORIGINAL_INSTANCE_SUFFIX
 	 */
+	//调用参数中指定Bean的postProcessorsAfterInitialization方法  初始化之前、之后
 	Object applyBeanPostProcessorsAfterInitialization(Object existingBean, String beanName)
 			throws BeansException;
 
@@ -327,6 +359,8 @@ public interface AutowireCapableBeanFactory extends BeanFactory {
 	 * and logged instead of propagated to the caller of this method.
 	 * @param existingBean the bean instance to destroy
 	 */
+	// 销毁参数中指定的Bean，同时调用此Bean上的DisposableBean和DestructionAwareBeanPostProcessors方法
+	// 在销毁途中，任何的异常情况都只应该被直接捕获和记录，而不应该向外抛出。
 	void destroyBean(Object existingBean);
 
 
@@ -347,6 +381,8 @@ public interface AutowireCapableBeanFactory extends BeanFactory {
 	 * @since 4.3.3
 	 * @see #getBean(Class)
 	 */
+	// 查找唯一符合指定类的实例，如果有，则返回实例的名字和实例本身
+	// 底层依赖于：BeanFactory中的getBean(Class)方法
 	<T> NamedBeanHolder<T> resolveNamedBean(Class<T> requiredType) throws BeansException;
 
 	/**
@@ -376,6 +412,7 @@ public interface AutowireCapableBeanFactory extends BeanFactory {
 	 * @since 2.5
 	 * @see #resolveDependency(DependencyDescriptor, String, Set, TypeConverter)
 	 */
+	// 解析出在Factory中与指定Bean有指定依赖关系的Bean（@Autowired依赖注入的核心方法）
 	@Nullable
 	Object resolveDependency(DependencyDescriptor descriptor, @Nullable String requestingBeanName) throws BeansException;
 
@@ -393,6 +430,11 @@ public interface AutowireCapableBeanFactory extends BeanFactory {
 	 * @since 2.5
 	 * @see DependencyDescriptor
 	 */
+	// descriptor 依赖描述 (field/method/constructor)
+	// requestingBeanName 依赖描述所属的Bean
+	// autowiredBeanNames 与指定Bean有依赖关系的Bean
+	// typeConverter 用以转换数组和连表的转换器
+	// 备注：结果可能为null，毕竟容器中可能不存在这个依赖嘛~~~~~~~~~~~~~~~~
 	@Nullable
 	Object resolveDependency(DependencyDescriptor descriptor, @Nullable String requestingBeanName,
 			@Nullable Set<String> autowiredBeanNames, @Nullable TypeConverter typeConverter) throws BeansException;

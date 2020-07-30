@@ -120,6 +120,9 @@ import org.springframework.util.StringUtils;
  * @see #resolveDependency
  */
 @SuppressWarnings("serial")
+// extends：相当于继承了抽象类所有的实现，并且是已经具有注入功能了（含有ListableBeanFactory、ConfigurableListableBeanFactory的所有接口）
+// implements：直接实现ConfigurableListableBeanFactory，表示它具有了批量处理Bean、配置Bean等等功能
+// BeanDefinitionRegistry：该接口目前还仅有这个类实现（它父接口为：AliasRegistry	）
 public class DefaultListableBeanFactory extends AbstractAutowireCapableBeanFactory
 		implements ConfigurableListableBeanFactory, BeanDefinitionRegistry, Serializable {
 

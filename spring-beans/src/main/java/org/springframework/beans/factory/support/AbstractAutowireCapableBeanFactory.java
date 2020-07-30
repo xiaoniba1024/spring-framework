@@ -124,9 +124,12 @@ public abstract class AbstractAutowireCapableBeanFactory extends AbstractBeanFac
 		implements AutowireCapableBeanFactory {
 
 	/** Strategy for creating bean instances. */
+	// 它有很多属性，我觉得还是很有意义的
+	// Bean的实例化需要借助它，策略接口
 	private InstantiationStrategy instantiationStrategy = new CglibSubclassingInstantiationStrategy();
 
 	/** Resolver strategy for method parameter names. */
+	// 解析方法参数的名字
 	@Nullable
 	private ParameterNameDiscoverer parameterNameDiscoverer = new DefaultParameterNameDiscoverer();
 
@@ -143,6 +146,11 @@ public abstract class AbstractAutowireCapableBeanFactory extends AbstractBeanFac
 	 * Dependency types to ignore on dependency check and autowire, as Set of
 	 * Class objects: for example, String. Default is none.
 	 */
+	// 这两个保存的类型，是ignore on dependency check and autowire（字段装配时，如果在这里面的类型讲被忽略）
+	// 使用：我们可以自己忽略类型：beanFactory.ignoreDependencyType(ArrayList.class); 比如在BeanFactoryPostProcessor 这里可以这么做
+
+	// 他们有些区别：因为平时使用较少，却别这里就不详细介绍了
+	// 总之，若你自己想忽略特定类型的自动注入的话，推荐使用ignoredDependencyTypes
 	private final Set<Class<?>> ignoredDependencyTypes = new HashSet<>();
 
 	/**
@@ -355,7 +363,10 @@ public abstract class AbstractAutowireCapableBeanFactory extends AbstractBeanFac
 	public Object createBean(Class<?> beanClass, int autowireMode, boolean dependencyCheck) throws BeansException {
 		// Use non-singleton bean definition, to avoid registering bean as dependent bean.
 		RootBeanDefinition bd = new RootBeanDefinition(beanClass, autowireMode, dependencyCheck);
+		// 这里看到了，采用的不是单例，而是prototype
 		bd.setScope(SCOPE_PROTOTYPE);
+		// doc说得很明白，这里返回值永远不可能为null。除非调用者强制return null
+		// 注意的是:这里BeanName就是beanClass.getName()
 		return createBean(beanClass.getName(), bd, null);
 	}
 
@@ -480,6 +491,9 @@ public abstract class AbstractAutowireCapableBeanFactory extends AbstractBeanFac
 	 * populates the bean instance, applies post-processors, etc.
 	 * @see #doCreateBean
 	 */
+	// 最终都调用到了下面这个createBean方法。它也是AbstractBeanFactory提供的一个抽象方法
+	// 最终也由AbstractAutowireCapableBeanFactory去实现的。 我们熟悉的doGetBean()方法，最终也是调用它来创建实例对象  只是doGetBean()把单例对象都缓存起来了
+	// 这个方法很单纯：创建一个实例，然后初始化他（给属性们赋值），然后return出去即可
 	@Override
 	protected Object createBean(String beanName, RootBeanDefinition mbd, @Nullable Object[] args)
 			throws BeanCreationException {
@@ -628,8 +642,8 @@ public abstract class AbstractAutowireCapableBeanFactory extends AbstractBeanFac
 		// 这个Obj，就是最终要返回的对象了
 		Object exposedObject = bean;
 		try {
-			// 这又是非常非常重要的一步：给已经初始化的属性们赋值===================对bean进行填充，在这里面完成依赖注入的相关内容
-			// 啥都不说了，看下面的详解吧
+			// 给Bean实例的各个属性进行赋值,对bean进行填充。 比如调用InstantiationAwareBeanPostProcessor#postProcessAfterInstantiation、给属性注入值（并不依赖于@Autowired注解）
+			// 执行InstantiationAwareBeanPostProcessor#postProcessPropertyValues等等
 			populateBean(beanName, mbd, instanceWrapper);
 
 			// 完成属性依赖注入后，进一步初始化Bean  具体进行了以下操作：
@@ -1266,6 +1280,7 @@ public abstract class AbstractAutowireCapableBeanFactory extends AbstractBeanFac
 			}
 		}
 		// resolved若为true，表示已经解析过构造器了，就下面直接使用解析好的构造器实例化Bean
+		// 说一下：ConstructorResolver，就是找到合适的构造器给你去实例化一个Bean（会结合Spring容器进行一起解析）
 		if (resolved) {
 			if (autowireNecessary) {
 				return autowireConstructor(beanName, mbd, null, null);

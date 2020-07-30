@@ -215,6 +215,7 @@ public interface BeanFactory {
 	 * @since 5.1
 	 * @see #getBeanProvider(ResolvableType)
 	 */
+	// 返回指定bean的提供程序（Provider），允许延迟(这是重点)按需检索实例，包括可用性和唯一性选项
 	<T> ObjectProvider<T> getBeanProvider(Class<T> requiredType);
 
 	/**
@@ -248,6 +249,7 @@ public interface BeanFactory {
 	 * @param name the name of the bean to query
 	 * @return whether a bean with the given name is present
 	 */
+	// 包含Bean定义或者包含单例Bean实例，都会返回true（不管这个Bean是具体的还是抽象的、lazy的还是eager的，in scope or not 都会返回true）
 	boolean containsBean(String name);
 
 	/**
@@ -265,6 +267,7 @@ public interface BeanFactory {
 	 * @see #getBean
 	 * @see #isPrototype
 	 */
+	// 若是单例，getBean()每次都会返回同一个实例
 	boolean isSingleton(String name) throws NoSuchBeanDefinitionException;
 
 	/**
@@ -300,6 +303,7 @@ public interface BeanFactory {
 	 * @see #getBean
 	 * @see #getType
 	 */
+	// 名称为name的Bean的类型，是否和给定的类型匹配（4.2新增的重载接口，传的是ResolvableType ，更加强大了）
 	boolean isTypeMatch(String name, ResolvableType typeToMatch) throws NoSuchBeanDefinitionException;
 
 	/**
@@ -334,6 +338,7 @@ public interface BeanFactory {
 	 * @see #getBean
 	 * @see #isTypeMatch
 	 */
+	// name对应的Bean的类型
 	@Nullable
 	Class<?> getType(String name) throws NoSuchBeanDefinitionException;
 
@@ -369,6 +374,7 @@ public interface BeanFactory {
 	 * @return the aliases, or an empty array if none
 	 * @see #getBean
 	 */
+	// name对应的Bean的别名们（通过别名也可以依赖注入哦~~~）  通过alia别名，也可以getBean()
 	String[] getAliases(String name);
 
 }
