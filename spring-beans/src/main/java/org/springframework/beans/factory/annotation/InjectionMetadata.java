@@ -106,6 +106,8 @@ public class InjectionMetadata {
 
 	public void inject(Object target, @Nullable String beanName, @Nullable PropertyValues pvs) throws Throwable {
 		Collection<InjectedElement> checkedElements = this.checkedElements;
+		// 这里是待遍历、待处理的属性Element们（备注，本处的InjectedElement实现类为：AutowiredFieldElement 因为我们是Field注入嘛）
+		// 所以从下可知，我们直接看AutowiredFieldElement#inject方法吧
 		Collection<InjectedElement> elementsToIterate =
 				(checkedElements != null ? checkedElements : this.injectedElements);
 		if (!elementsToIterate.isEmpty()) {
@@ -113,6 +115,7 @@ public class InjectionMetadata {
 				if (logger.isTraceEnabled()) {
 					logger.trace("Processing injected element of bean '" + beanName + "': " + element);
 				}
+				// 主要的方法，还是在InjectedElement#inject里
 				element.inject(target, beanName, pvs);
 			}
 		}

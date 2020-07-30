@@ -52,6 +52,7 @@ public interface DeferredImportSelector extends ImportSelector {
 	/**
 	 * Interface used to group results from different import selectors.
 	 */
+	// 内部接口
 	interface Group {
 
 		/**
@@ -71,6 +72,7 @@ public interface DeferredImportSelector extends ImportSelector {
 		 * An entry that holds the {@link AnnotationMetadata} of the importing
 		 * {@link Configuration} class and the class name to import.
 		 */
+		// 内部的内部类
 		class Entry {
 
 			private final AnnotationMetadata metadata;

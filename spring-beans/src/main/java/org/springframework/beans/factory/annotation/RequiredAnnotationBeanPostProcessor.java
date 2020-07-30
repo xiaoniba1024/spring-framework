@@ -142,6 +142,7 @@ public class RequiredAnnotationBeanPostProcessor extends InstantiationAwareBeanP
 	public void postProcessMergedBeanDefinition(RootBeanDefinition beanDefinition, Class<?> beanType, String beanName) {
 	}
 
+	// 它就是去校验，标注了@Required注解的，必须是是存在这个Bean的
 	@Override
 	public PropertyValues postProcessPropertyValues(
 			PropertyValues pvs, PropertyDescriptor[] pds, Object bean, String beanName) {

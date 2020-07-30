@@ -261,6 +261,7 @@ public class AutowiredAnnotationBeanPostProcessor extends InstantiationAwareBean
 			throws BeanCreationException {
 
 		// Let's check for lookup methods here...
+		// 检测@Lookup注解，这个注解的注入方式，已经不推荐使用了===========
 		if (!this.lookupMethodsChecked.contains(beanName)) {
 			if (AnnotationUtils.isCandidateClass(beanClass, Lookup.class)) {
 				try {
@@ -295,14 +296,18 @@ public class AutowiredAnnotationBeanPostProcessor extends InstantiationAwareBean
 		}
 
 		// Quick check on the concurrent map first, with minimal locking.
+		// 先从缓存里去看，有没有解析过此类的构造函数~~~
+		// 对每个类的构造函数只解析一次，解析完会存储结果，以备下次复用
 		Constructor<?>[] candidateConstructors = this.candidateConstructorsCache.get(beanClass);
 		if (candidateConstructors == null) {
 			// Fully synchronized resolution now...
 			synchronized (this.candidateConstructorsCache) {
+				// 为了线程安全，这里继续校验一次
 				candidateConstructors = this.candidateConstructorsCache.get(beanClass);
 				if (candidateConstructors == null) {
 					Constructor<?>[] rawCandidates;
 					try {
+						// 拿到此Class所有的构造函数们（一般的类都只有一个空的构造函数）  当然我们也可以写多个
 						rawCandidates = beanClass.getDeclaredConstructors();
 					}
 					catch (Throwable ex) {
@@ -313,8 +318,10 @@ public class AutowiredAnnotationBeanPostProcessor extends InstantiationAwareBean
 					List<Constructor<?>> candidates = new ArrayList<>(rawCandidates.length);
 					Constructor<?> requiredConstructor = null;
 					Constructor<?> defaultConstructor = null;
+					// 兼容Kotlin类型做的处理~~~~~~~~~~~~
 					Constructor<?> primaryConstructor = BeanUtils.findPrimaryConstructor(beanClass);
 					int nonSyntheticConstructors = 0;
+					// 遍历处理每个每个构造器~~~~~~~~~~~
 					for (Constructor<?> candidate : rawCandidates) {
 						if (!candidate.isSynthetic()) {
 							nonSyntheticConstructors++;
@@ -322,9 +329,12 @@ public class AutowiredAnnotationBeanPostProcessor extends InstantiationAwareBean
 						else if (primaryConstructor != null) {
 							continue;
 						}
+						// 找到构造器里有@Aotowaired或者@Value注解的直接信息们
 						MergedAnnotation<?> ann = findAutowiredAnnotation(candidate);
 						if (ann == null) {
+							// 此方法的目的是拿到目标类：比如若是被cglib代理过的，那就拿到父类（因为cglib是通过子类的形式加强的）
 							Class<?> userClass = ClassUtils.getUserClass(beanClass);
+							// 说明确实是被CGLIB代理过的，那就再解析一次  看看父类是否有@Autowaired这种构造器
 							if (userClass != beanClass) {
 								try {
 									Constructor<?> superCtor =
@@ -336,14 +346,19 @@ public class AutowiredAnnotationBeanPostProcessor extends InstantiationAwareBean
 								}
 							}
 						}
+						// 这里是是存在注解标注的这种构造器的
 						if (ann != null) {
+							// 这个判断很有必要，表示要求的构造器最多只能有一个
+							// 画外音：@Autowired标注的构造器数量最多只能有一个（当然，required=true的只能有一个，=false的可以有多个）
 							if (requiredConstructor != null) {
 								throw new BeanCreationException(beanName,
 										"Invalid autowire-marked constructor: " + candidate +
 										". Found constructor with 'required' Autowired annotation already: " +
 										requiredConstructor);
 							}
+							// 获取autowire注解中required属性值
 							boolean required = determineRequiredStatus(ann);
+							// 只有是true，就往下走（默认值为true）
 							if (required) {
 								if (!candidates.isEmpty()) {
 									throw new BeanCreationException(beanName,
@@ -351,8 +366,10 @@ public class AutowiredAnnotationBeanPostProcessor extends InstantiationAwareBean
 											". Found constructor with 'required' Autowired annotation: " +
 											candidate);
 								}
+								// 这样子，这个构造器就是必须的了，记录下来
 								requiredConstructor = candidate;
 							}
+							// 把标注有@Autowired注解的构造器，记录下来，作为候选的构造器
 							candidates.add(candidate);
 						}
 						else if (candidate.getParameterCount() == 0) {
@@ -374,9 +391,12 @@ public class AutowiredAnnotationBeanPostProcessor extends InstantiationAwareBean
 						}
 						candidateConstructors = candidates.toArray(new Constructor<?>[0]);
 					}
+					// 这个就重要了，处理精妙
+					// 若该构造器没有被标注@Autowired注解，但是它是无参构造器，那就当然候选的构造器（当然是以标注了@Autowired的为准）
 					else if (rawCandidates.length == 1 && rawCandidates[0].getParameterCount() > 0) {
 						candidateConstructors = new Constructor<?>[] {rawCandidates[0]};
 					}
+					// 处理primaryConstructor以及nonSyntheticConstructors    兼容Kotlin一般都达不到
 					else if (nonSyntheticConstructors == 2 && primaryConstructor != null &&
 							defaultConstructor != null && !primaryConstructor.equals(defaultConstructor)) {
 						candidateConstructors = new Constructor<?>[] {primaryConstructor, defaultConstructor};
@@ -384,6 +404,7 @@ public class AutowiredAnnotationBeanPostProcessor extends InstantiationAwareBean
 					else if (nonSyntheticConstructors == 1 && primaryConstructor != null) {
 						candidateConstructors = new Constructor<?>[] {primaryConstructor};
 					}
+					// 啥构造器都没找到，那就是空数组
 					else {
 						candidateConstructors = new Constructor<?>[0];
 					}
@@ -391,14 +412,18 @@ public class AutowiredAnnotationBeanPostProcessor extends InstantiationAwareBean
 				}
 			}
 		}
+		// 若有多个构造函数，但是没有一个标记了@Autowired,此处不会报错，但是返回null，交给后面的策略处理
 		return (candidateConstructors.length > 0 ? candidateConstructors : null);
 	}
 
+	// 解析元数据，会在Bean属性set方法之前执行，
+	// 这里就是解析该Bean的Autowired信息,然后给inject进去
 	@Override
-	//解析元数据，会在Bean属性set方法之前执行，
 	public PropertyValues postProcessProperties(PropertyValues pvs, Object bean, String beanName) {
+		// 找到所有的@Autowired元数据-------当前值可以见下图
 		InjectionMetadata metadata = findAutowiringMetadata(beanName, bean.getClass(), pvs);
 		try {
+			// 所以我们看InjectionMetadata 的inject即可，见下
 			metadata.inject(bean, beanName, pvs);
 		}
 		catch (BeanCreationException ex) {
@@ -628,22 +653,30 @@ public class AutowiredAnnotationBeanPostProcessor extends InstantiationAwareBean
 			super(field, null);
 			this.required = required;
 		}
-
+		// 这段代码虽然长，其实核心逻辑还并不在这里，而是在beanFactory Bean工厂的resolveDependency处理依赖实现里
 		@Override
 		protected void inject(Object bean, @Nullable String beanName, @Nullable PropertyValues pvs) throws Throwable {
-			//field 标注了Autowired注解的，而不是所有field
+			// field 标注了Autowired注解的，而不是所有field
+			// 拿到这个字段名
 			Field field = (Field) this.member;
 			Object value;
+			// 大多数情况下，这里都是false
 			if (this.cached) {
 				value = resolvedCachedArgument(beanName, this.cachedFieldValue);
 			}
 			else {
+				// 把field和required属性，包装成desc描述类
 				DependencyDescriptor desc = new DependencyDescriptor(field, this.required);
 				desc.setContainingClass(bean.getClass());
+				// 装载注入的名称，最最最后会被注册（缓存）起来
 				Set<String> autowiredBeanNames = new LinkedHashSet<>(1);
 				Assert.state(beanFactory != null, "No BeanFactory available");
+				// 转换器，没有手动注册，默认都是SimpleTypeConverter===============
 				TypeConverter typeConverter = beanFactory.getTypeConverter();
 				try {
+					// 把desc传进去，里面还有注解信息、元信息等等，这个方法是根据注解信息寻找到依赖的Bean的核心逻辑
+					// 备注：此部分处理依赖逻辑交给Bean工厂，其实也没毛病。毕竟它处理的相当于是Field
+					// 那么接下里，重点分析resolveDependency这个方法
 					value = beanFactory.resolveDependency(desc, beanName, autowiredBeanNames, typeConverter);
 				}
 				catch (BeansException ex) {
@@ -651,11 +684,15 @@ public class AutowiredAnnotationBeanPostProcessor extends InstantiationAwareBean
 				}
 				synchronized (this) {
 					if (!this.cached) {
+						// 如果已经拿到了这个Bean实例，
 						if (value != null || this.required) {
 							this.cachedFieldValue = desc;
+							// 把该Bean的依赖关系再注册一次
 							registerDependentBeans(beanName, autowiredBeanNames);
+							// 因为是按照类型注入，所以肯定只能指导一个这个的依赖Bean，否则上面解析就已经报错了
 							if (autowiredBeanNames.size() == 1) {
 								String autowiredBeanName = autowiredBeanNames.iterator().next();
+								// 这里是来处理放置缓存的字段值
 								if (beanFactory.containsBean(autowiredBeanName) &&
 										beanFactory.isTypeMatch(autowiredBeanName, field.getType())) {
 									this.cachedFieldValue = new ShortcutDependencyDescriptor(
@@ -671,8 +708,7 @@ public class AutowiredAnnotationBeanPostProcessor extends InstantiationAwareBean
 				}
 			}
 			if (value != null) {
-				// 通过反射的方式进行注入
-				// 使private方法可以进行注入
+				// 通过反射的方式给该对象的该字段赋值。注意这里makeAccessible设置为true了，所以即使你的字段是private的也木有关系哦~~~
 				ReflectionUtils.makeAccessible(field);
 				field.set(bean, value);
 			}
