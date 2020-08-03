@@ -41,6 +41,7 @@ import org.springframework.lang.Nullable;
  * @author Juergen Hoeller
  * @since 2.5.1
  */
+// 可议看到它是一个首相类，并且继承自`DefaultSingletonBeanRegistry
 public abstract class FactoryBeanRegistrySupport extends DefaultSingletonBeanRegistry {
 
 	/** Cache of singleton objects created by FactoryBeans: FactoryBean name to object. */
@@ -53,6 +54,7 @@ public abstract class FactoryBeanRegistrySupport extends DefaultSingletonBeanReg
 	 * @return the FactoryBean's object type,
 	 * or {@code null} if the type cannot be determined yet
 	 */
+	// 获取factoryBean的类型。  它相对于factoryBean.getObjectType()主要是增加了一些安全校验   这里相关源码我都省略了
 	@Nullable
 	protected Class<?> getTypeForFactoryBean(final FactoryBean<?> factoryBean) {
 		try {
@@ -79,6 +81,7 @@ public abstract class FactoryBeanRegistrySupport extends DefaultSingletonBeanReg
 	 * @return the object obtained from the FactoryBean,
 	 * or {@code null} if not available
 	 */
+	// 直接从缓存中拿  工厂Bean制造出来的对象
 	@Nullable
 	protected Object getCachedObjectForFactoryBean(String beanName) {
 		return this.factoryBeanObjectCache.get(beanName);
@@ -93,11 +96,16 @@ public abstract class FactoryBeanRegistrySupport extends DefaultSingletonBeanReg
 	 * @throws BeanCreationException if FactoryBean object creation failed
 	 * @see org.springframework.beans.factory.FactoryBean#getObject()
 	 */
+	// 核心方法：从工厂Bean里面拿到这个对象~
 	protected Object getObjectFromFactoryBean(FactoryBean<?> factory, String beanName, boolean shouldPostProcess) {
+		// 是单例，并且已经存在该beanName了
 		if (factory.isSingleton() && containsSingleton(beanName)) {
+			// 仍然采用这把锁  互斥锁
 			synchronized (getSingletonMutex()) {
+				// 显然只有factoryBeanObjectCache里不存在此bean，才需要继续去工厂Bean里面找~
 				Object object = this.factoryBeanObjectCache.get(beanName);
 				if (object == null) {
+					// 其实就基本相当于 factory.getObject()
 					object = doGetObjectFromFactoryBean(factory, beanName);
 					// Only post-process and store if not put there already during getObject() call above
 					// (e.g. because of circular reference processing triggered by custom getBean calls)

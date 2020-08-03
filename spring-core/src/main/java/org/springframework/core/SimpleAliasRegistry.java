@@ -44,6 +44,7 @@ public class SimpleAliasRegistry implements AliasRegistry {
 	protected final Log logger = LogFactory.getLog(getClass());
 
 	/** Map from alias to canonical name. */
+	// key为alias别名，value为name真实值
 	private final Map<String, String> aliasMap = new ConcurrentHashMap<>(16);
 
 
@@ -51,7 +52,10 @@ public class SimpleAliasRegistry implements AliasRegistry {
 	public void registerAlias(String name, String alias) {
 		Assert.hasText(name, "'name' must not be empty");
 		Assert.hasText(alias, "'alias' must not be empty");
+		// 此处注意：很多人疑问的地方，用了ConcurrentHashMap，为何此处还要加锁呢？有必要吗？
+		// 答：非常有必要的。因为ConcurrentHashMap只能保证单个put、remove方法的原子性。而不能保证多个操作同时的原子性。比如我一边添加、一边删除  显然这是不被允许的
 		synchronized (this.aliasMap) {
+			// 若发现别名和name是相同的，就不需要做啥了。而且顺手把这个key给移除掉
 			if (alias.equals(name)) {
 				this.aliasMap.remove(alias);
 				if (logger.isDebugEnabled()) {
@@ -59,12 +63,15 @@ public class SimpleAliasRegistry implements AliasRegistry {
 				}
 			}
 			else {
+				// 拿到这个别名对应的name，看看该别名是否已经存在对应的name了
 				String registeredName = this.aliasMap.get(alias);
 				if (registeredName != null) {
+					// 若已经存在对应的name了，而且还和传进俩的name相同，那啥都不做就行
 					if (registeredName.equals(name)) {
 						// An existing alias - no need to re-register
 						return;
 					}
+					// 若存在对应的name了，切还不让复写此别名（让其指向别的name），那就跑错吧
 					if (!allowAliasOverriding()) {
 						throw new IllegalStateException("Cannot define alias '" + alias + "' for name '" +
 								name + "': It is already registered for name '" + registeredName + "'.");

@@ -52,9 +52,9 @@ import org.springframework.util.Assert;
  * @see org.springframework.context.support.GenericXmlApplicationContext
  */
 public class AnnotationConfigApplicationContext extends GenericApplicationContext implements AnnotationConfigRegistry {
-
+	// load里面的Bean定义信息
 	private final AnnotatedBeanDefinitionReader reader;
-
+	// 把文件都扫描进来
 	private final ClassPathBeanDefinitionScanner scanner;
 
 

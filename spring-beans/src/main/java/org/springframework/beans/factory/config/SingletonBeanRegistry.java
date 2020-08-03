@@ -58,7 +58,9 @@ public interface SingletonBeanRegistry {
 	 */
 	// 以指定的名字将给定Object注册到BeanFactory中。
 	// 此接口相当于直接把Bean注册，所以都是准备好了的Bean。（动态的向容器里直接放置一个Bean）
-	// 什么BeanPostProcessor、InitializingBean、afterPropertiesSet等都不会被执行的，销毁的时候也不会收到destroy的信息
+	// 1、给定的Object必须是被完全初始化了的(比如new出来的)
+	// 2、此注册接口不会提供任何用以初始化的回调函数(比如：InitializingBean、afterPropertiesSet都是不会执行的)
+	// 3、如果此接口的实现类是一个BeanFactory，最好最好最好将你的类注册成Bean Definition而不是直接使用对象(这样就可以使你定义的Bean收到initialization和destruction回调)
 	void registerSingleton(String beanName, Object singletonObject);
 
 	/**
@@ -75,7 +77,8 @@ public interface SingletonBeanRegistry {
 	 * @see ConfigurableListableBeanFactory#getBeanDefinition
 	 */
 	// 以Object的形式返回指定名字的Bean，如果仅仅还是只有Bean定义信息，这里不会返回
-	// 需要注意的是：此方法不能直接通过别名获取Bean。若是别名，请通过BeanFactory的方法先获取到id
+	// 仅仅返回已经初始化完成的Bean，对于还没有初始化的Bean Definition不予以考虑
+	// 但是要注意，此方法**并不支持使用别名**对Bean进行查找，如果只有别名的话，要先通过BeanFactory的接口获取到Bean对应的全限定名称（transformedBeanName()）
 	@Nullable
 	Object getSingleton(String beanName);
 
@@ -101,7 +104,8 @@ public interface SingletonBeanRegistry {
 	 * @see org.springframework.beans.factory.ListableBeanFactory#containsBeanDefinition
 	 * @see org.springframework.beans.factory.BeanFactory#containsBean
 	 */
-	// 是否包含此单例Bean（不支持通过别名查找）
+	// 检查此实例是否包含指定名字的并且！！！已经初始化完成的单例Bean（不支持别名查找）
+	// BeanFactory#containsBean是containsSingleton(beanName) || containsBeanDefinition(beanName)
 	boolean containsSingleton(String beanName);
 
 	/**

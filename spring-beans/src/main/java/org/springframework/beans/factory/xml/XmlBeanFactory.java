@@ -63,6 +63,8 @@ public class XmlBeanFactory extends DefaultListableBeanFactory {
 	 * @param resource the XML resource to load bean definitions from
 	 * @throws BeansException in case of loading or parsing errors
 	 */
+	// 此处resource资源事传一个xml的文件资源~~~~
+	// parentBeanFactory：父工厂~~~
 	public XmlBeanFactory(Resource resource) throws BeansException {
 		this(resource, null);
 	}

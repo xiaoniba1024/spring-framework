@@ -34,6 +34,8 @@ import org.springframework.util.StringUtils;
  * @author Juergen Hoeller
  * @since 2.5.2
  */
+// @since 2.5.2可以看到提供得还是比较晚的
+// AliasRegistry和SimpleAliasRegistry都是@since 2.5.2之后才有的~~
 public class SimpleBeanDefinitionRegistry extends SimpleAliasRegistry implements BeanDefinitionRegistry {
 
 	/** Map of bean definition objects, keyed by bean name. */

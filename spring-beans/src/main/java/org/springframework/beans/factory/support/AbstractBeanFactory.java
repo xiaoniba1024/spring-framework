@@ -1876,6 +1876,8 @@ public abstract class AbstractBeanFactory extends FactoryBeanRegistrySupport imp
 	 * an inner bean created with this name.
 	 * @param beanName the name to check
 	 */
+	// ==========这个方法非常有意思：它是间接的实现的===============
+	// 因为BeanDefinitionRegistry有这个方法，而它的父类AbstractBeanFactory也有这个方法，所以一步小心，就间接的实现了这个接口方法
 	public boolean isBeanNameInUse(String beanName) {
 		return isAlias(beanName) || containsLocalBean(beanName) || hasDependentBean(beanName);
 	}

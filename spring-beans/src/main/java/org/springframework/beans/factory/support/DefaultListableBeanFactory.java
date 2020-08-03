@@ -176,7 +176,7 @@ public class DefaultListableBeanFactory extends AbstractAutowireCapableBeanFacto
 	private final Map<Class<?>, String[]> singletonBeanNamesByType = new ConcurrentHashMap<>(64);
 
 	/** List of bean definition names, in registration order. */
-	// 按照注册顺序存储bean definition names的列表
+	// 保存所有的Bean名称，按照注册顺序存储bean definition names的列表
 	private volatile List<String> beanDefinitionNames = new ArrayList<>(256);
 
 	/** List of names of manually registered singletons, in registration order. */
@@ -940,7 +940,7 @@ public class DefaultListableBeanFactory extends AbstractAutowireCapableBeanFacto
 	// Implementation of BeanDefinitionRegistry interface
 	//---------------------------------------------------------------------
 
-	//注册Bean
+	// 注册Bean
 	@Override
 	public void registerBeanDefinition(String beanName, BeanDefinition beanDefinition)
 			throws BeanDefinitionStoreException {
@@ -960,10 +960,15 @@ public class DefaultListableBeanFactory extends AbstractAutowireCapableBeanFacto
 		}
 
 		BeanDefinition existingDefinition = this.beanDefinitionMap.get(beanName);
-		if (existingDefinition != null) {// BeanDefinition是否已经注册过，已存在
-			if (!isAllowBeanDefinitionOverriding()) { // 是否允许覆盖（spring场景中不允许重复定义）
+		// 如果不为null，说明这个beanName对应的Bean定义信息已经存在了~~~~~
+		if (existingDefinition != null) {
+			// 是否允许覆盖（默认是true 表示允许的）
+			if (!isAllowBeanDefinitionOverriding()) {
 				throw new BeanDefinitionOverrideException(beanName, beanDefinition, existingDefinition);
 			}
+			// 若允许覆盖  那还得比较下role  如果新进来的这个Bean的role更大
+			// 比如老的是ROLE_APPLICATION（0）  新的是ROLE_INFRASTRUCTURE(2)
+			// 最终会执行到put，但是此处输出一个warn日志，告知你的bean被覆盖啦~~~~~~~（我们自己覆盖Spring框架内的bean显然就不需要warn提示了）
 			else if (existingDefinition.getRole() < beanDefinition.getRole()) { // 从两个方面考虑：业务方面，还是架构方面
 				// e.g. was ROLE_APPLICATION, now overriding with ROLE_SUPPORT or ROLE_INFRASTRUCTURE
 				if (logger.isInfoEnabled()) {
@@ -972,6 +977,7 @@ public class DefaultListableBeanFactory extends AbstractAutowireCapableBeanFacto
 							existingDefinition + "] with [" + beanDefinition + "]");
 				}
 			}
+			// 最终会执行put，但是内容还不相同  那就提醒一个info信息吧
 			else if (!beanDefinition.equals(existingDefinition)) {
 				if (logger.isDebugEnabled()) {
 					logger.debug("Overriding bean definition for bean '" + beanName +
@@ -986,13 +992,16 @@ public class DefaultListableBeanFactory extends AbstractAutowireCapableBeanFacto
 							"] with [" + beanDefinition + "]");
 				}
 			}
+			// 最终添加进去 （哪怕已经存在了~）
+			// 从这里能看出Spring对日志输出的一个优秀处理，方便我们定位问题~~~
 			this.beanDefinitionMap.put(beanName, beanDefinition);
+			// 请注意：这里beanName并没有再add了，因为已经存在了  没必要了嘛
 		}
-		else { // 不存在
-			// Bean是否已经开始创建
-			// 已开始
+		else {
+			// hasBeanCreationStarted:表示已经存在bean开始创建了（开始getBean()了吧~~~）
 			if (hasBeanCreationStarted()) {
 				// Cannot modify startup-time collection elements anymore (for stable iteration)
+				// 注册过程需要synchronized，保证数据的一致性	synchronized (this.beanDefinitionMap) {
 				// 无法再修改启动时收集元素（用于稳定的迭代）
 				synchronized (this.beanDefinitionMap) {
 					this.beanDefinitionMap.put(beanName, beanDefinition);
@@ -1003,19 +1012,25 @@ public class DefaultListableBeanFactory extends AbstractAutowireCapableBeanFacto
 					removeManualSingletonName(beanName);
 				}
 			}
-			else {	// 未开始
+			// 表示仍然在启动  注册的状态~~~就很好处理了 put仅需，名字add进去
+			else {
 				// Still in startup registration phase
 				// ConcurrentHashMap  beanDefinitionMap 虽然是线程安全的，无序，但是可以保证唯一性
 				// List beanDefinitionNames   List是有序的，确保了注册的顺序。
 				this.beanDefinitionMap.put(beanName, beanDefinition);
 				this.beanDefinitionNames.add(beanName);
-				// 删除工厂内部的手动单例名称集
+				// 手动注册的BeanNames里面移除~~~ 因为有Bean定义信息了，所以现在不是手动直接注册的Bean单例~~~
 				removeManualSingletonName(beanName);
 			}
+			// 这里的意思是：但凡你新增了一个新的Bean定义信息，之前已经冻结的就清空呗~~~
 			this.frozenBeanDefinitionNames = null;
 		}
-		// 已经注册过 或者 是单例
+		// 最后异步很有意思：老的bean定义信息不为null（beanName已经存在了）,或者这个beanName直接是一个单例Bean了~
 		if (existingDefinition != null || containsSingleton(beanName)) {
+			// 做清理工作：
+			// clearMergedBeanDefinition(beanName)
+			// destroySingleton(beanName);  销毁这个单例Bean  因为有了该bean定义信息  最终还是会创建的
+			// Reset all bean definitions that have the given bean as parent (recursively).  处理该Bean定义的getParentName  有相同的也得做清楚  所以这里是个递归
 			resetBeanDefinition(beanName);
 		}
 	}
@@ -1023,8 +1038,12 @@ public class DefaultListableBeanFactory extends AbstractAutowireCapableBeanFacto
 	@Override
 	public void removeBeanDefinition(String beanName) throws NoSuchBeanDefinitionException {
 		Assert.hasText(beanName, "'beanName' must not be empty");
+		// 移除整体上比较简单：beanDefinitionMap.remove
+		// beanDefinitionNames.remove
+		// resetBeanDefinition(beanName);
 
 		BeanDefinition bd = this.beanDefinitionMap.remove(beanName);
+		// 这里发现移除，若这个Bean定义本来就不存在，事抛异常，而不是返回null 需要注意~~~~
 		if (bd == null) {
 			if (logger.isTraceEnabled()) {
 				logger.trace("No bean named '" + beanName + "' found in " + this);
