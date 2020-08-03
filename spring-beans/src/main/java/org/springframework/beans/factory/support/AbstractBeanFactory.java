@@ -171,6 +171,8 @@ public abstract class AbstractBeanFactory extends FactoryBeanRegistrySupport imp
 	private final Map<String, RootBeanDefinition> mergedBeanDefinitions = new ConcurrentHashMap<>(256);
 
 	/** Names of beans that have already been created at least once. */
+	// 当这个Bean被创建完成后，会标记为这个 注意：这里是set集合 不会重复
+	// 至少被创建了一次的  都会放进这里~~~~doGetBean
 	private final Set<String> alreadyCreated = Collections.newSetFromMap(new ConcurrentHashMap<>(256));
 
 	/** Names of beans that are currently in creation. */
@@ -302,7 +304,8 @@ public abstract class AbstractBeanFactory extends FactoryBeanRegistrySupport imp
 					return (T) parentBeanFactory.getBean(nameToLookup);
 				}
 			}
-			//alreadyCreated字段增加此值。表示此Bean已经创建了
+			// 如果不是只检查类型，那就标记这个Bean被创建了~~添加到缓存里 也就是所谓的  当前创建Bean池
+			// alreadyCreated字段增加此值。表示此Bean已经创建了
 			// 备注，此处我们就以 `helloServiceImpl` 这个Bean的创建为例了~~~
 			if (!typeCheckOnly) {
 				markBeanAsCreated(beanName);
@@ -339,8 +342,9 @@ public abstract class AbstractBeanFactory extends FactoryBeanRegistrySupport imp
 				// Create bean instance.
 				// 从这里开始，就正式开始着手创建这个Bean的实例了~~~~
 				if (mbd.isSingleton()) {
-					// 也是一样先尝试从缓存去获取，获取失败就通过ObjectFactory的createBean方法创建
-					// 这个getSingleton方法和上面是重载方法，它支持通过ObjectFactory去根据Scope来创建对象，具体源码解析见下面
+					// 这个getSingleton方法不是SingletonBeanRegistry的接口方法  属于实现类DefaultSingletonBeanRegistry的一个public重载方法~~~
+					// 它的特点是在执行singletonFactory.getObject();前后会执行beforeSingletonCreation(beanName);和afterSingletonCreation(beanName);
+					// 也就是保证这个Bean在创建过程中，放入正在创建的缓存池里  可以看到它实际创建bean调用的是我们的createBean方法~~~~
 					sharedInstance = getSingleton(beanName, () -> {
 						try {
 							// 这是创建Bean的核心方法，非常重要~~~~~~~~~~~~~~~下面会有
@@ -1791,6 +1795,8 @@ public abstract class AbstractBeanFactory extends FactoryBeanRegistrySupport imp
 	 * @param beanName the name of the bean
 	 * @return {@code true} if actually removed, {@code false} otherwise
 	 */
+	// 虽然是remove方法 但是它的返回值也非常重要
+	// 该方法唯一调用的地方就是循环依赖的最后检查处~~~~~
 	protected boolean removeSingletonIfCreatedForTypeCheckOnly(String beanName) {
 		if (!this.alreadyCreated.contains(beanName)) {
 			removeSingleton(beanName);
