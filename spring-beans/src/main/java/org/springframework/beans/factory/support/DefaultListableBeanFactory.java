@@ -1259,31 +1259,30 @@ public class DefaultListableBeanFactory extends AbstractAutowireCapableBeanFacto
 	@Nullable
 	public Object resolveDependency(DependencyDescriptor descriptor, @Nullable String requestingBeanName,
 			@Nullable Set<String> autowiredBeanNames, @Nullable TypeConverter typeConverter) throws BeansException {
-		// 把当前Bean工厂的名字发现器赋值给传进来DependencyDescriptor 类
-		// 这里面注意了：有必要说说名字发现器这个东西，具体看下面吧==========还是比较重要的
-		// Bean工厂的默认值为：private ParameterNameDiscoverer parameterNameDiscoverer = new DefaultParameterNameDiscoverer();
+		// 为依赖描述符设置参数名称发现器
+		// 此处使用的是DefaultParameterNameDiscoverer 来获取参数名
 		descriptor.initParameterNameDiscovery(getParameterNameDiscoverer());
-		// 支持到Optional类型的注入，比如我们这样注入：private Optional<GenericBean<Object, Object>> objectGenericBean;
-		// 也是能够注入进来的，只是类型变为，Optional[GenericBean(t=obj1, w=2)]
-		// 对于Java8中Optional类的处理
+		// 下面的 if-else 语句根据 descriptor 中依赖的类型决定如何获取依赖对象
+		// 依赖类型是 Optional 的情况
 		if (Optional.class == descriptor.getDependencyType()) {
 			return createOptionalDependency(descriptor, requestingBeanName);
 		}
-		// 兼容ObjectFactory和ObjectProvider（Spring4.3提供的接口）
-		// 关于ObjectFactory和ObjectProvider在依赖注入中的大作用，我觉得是非常有必要再撰文讲解的
-		// 对于前面讲到的提早曝光的ObjectFactory的特殊处理
+		// 依赖类型是ObjectFactory和ObjectProvider（Spring4.3提供的接口）
 		else if (ObjectFactory.class == descriptor.getDependencyType() ||
 				ObjectProvider.class == descriptor.getDependencyType()) {
 			return new DependencyObjectProvider(descriptor, requestingBeanName);
 		}
-		// 支持到了javax.inject.Provider这个类的实现
+		// 依赖类型是 javax.inject.Provider 的情况
 		else if (javaxInjectProviderClass == descriptor.getDependencyType()) {
 			return new Jsr330Factory().createDependencyProvider(descriptor, requestingBeanName);
 		}
+		// 其他情况，从容器中获取所依赖的bean , 又分为 lazy依赖注入 和 非lazy依赖注入 两种情况
 		// 这个应该是我们觉得部分触及到的，其实不管何种方式，最终都是交给doResolveDependency方法去处理了
 		else {
+			// 此处特别特别的需要重视：这是@Lazy支持的根本原因~~
 			// getAutowireCandidateResolver()得到ContextAnnotationAutowireCandidateResolver 根据依赖注解信息，找到对应的Bean值信息
-			// getLazyResolutionProxyIfNecessary方法，它也是唯一实现。
+			// 此处若通过AutowireCandidateResolver解析到了值就直接返回了（若标注了@Lazy，会解析@Lazy这个注解，来创建代理对象，此处的result将不会为null了~~~）
+			// getLazyResolutionProxyIfNecessary方法，它也是唯一实现，。
 			// 如果字段上带有@Lazy注解，表示进行懒加载 Spring不会立即创建注入属性的实例，而是生成代理对象，来代替实例
 			Object result = getAutowireCandidateResolver().getLazyResolutionProxyIfNecessary(
 					descriptor, requestingBeanName);
@@ -1299,32 +1298,41 @@ public class DefaultListableBeanFactory extends AbstractAutowireCapableBeanFacto
 	@Nullable
 	public Object doResolveDependency(DependencyDescriptor descriptor, @Nullable String beanName,
 			@Nullable Set<String> autowiredBeanNames, @Nullable TypeConverter typeConverter) throws BeansException {
-		// 处理嵌套多次注入的保护点
-		// 相当于打个点，记录下当前的步骤位置  返回值为当前的InjectionPoint
+		//  此处涉及知识点 :
+		// 1. doResolveDependency 方法会被递归调用，从而导致 ConstructorResolver 被递归使用，
+		//    而 ConstructorResolver 使用 ThreadLocal 记录当前注入点，所以它在被递归调用时要首先保存
+		//    递归中上一层记录的注入点到 previousInjectionPoint , 在当前层 doResolveDependency 结束
+		//    时恢复 previousInjectionPoint 。如果没有该动作，则 ConstructorResolver 会出现错误行为。
+		// 2. DependencyDescriptor 继承自 InjectionPoint，
 		InjectionPoint previousInjectionPoint = ConstructorResolver.setCurrentInjectionPoint(descriptor);
 		try {
+			// 某些  DependencyDescriptor 实现子类可能提供了快捷解析方式，所以这里先调用该方法尝试快捷解析，
+			// 而 DependencyDescriptor 类对该方法的缺省实现返回 null
 			// 简单的说就是去Bean工厂的缓存里去看看，有没有名称为此的Bean，有就直接返回，没必要继续往下走了
-			// 比如此处的beanName为：objectGenericBean等等
+			// ShortcutDependencyDescriptor实在inject完成后创建的，就是有缓存的效果~~~
 			Object shortcut = descriptor.resolveShortcut(this);
 			if (shortcut != null) {
+				// 快捷实现能够解析到依赖的情况，直接返回
 				return shortcut;
 			}
 			// 此处为：class com.fsx.bean.GenericBean
 			Class<?> type = descriptor.getDependencyType();
+			// 看看有没有注解@Value提供的值 ，从此处其实也可以看出，@Value注解的优先级对于找到bean来说还是蛮高的
 			// 看看ContextAnnotationAutowireCandidateResolver的getSuggestedValue方法,具体实现在父类 QualifierAnnotationAutowireCandidateResolver中
-			// 处理@Value注解-------------------------------------
-			// 获取@Value中的value属性
 			Object value = getAutowireCandidateResolver().getSuggestedValue(descriptor);
 			// 若存在value值，那就去解析它。使用到了AbstractBeanFactory#resolveEmbeddedValue
 			// 也就是使用StringValueResolver处理器去处理一些表达式~~
 			if (value != null) {
+				// 有注解@Value提供值的情况
 				if (value instanceof String) {
+					// 现在 value 只是个字符串表达式，现在需要尝试对其求值，主要是使用具体值
+					// 替换其中的占位符
 					String strVal = resolveEmbeddedValue((String) value);
 					BeanDefinition bd = (beanName != null && containsBean(beanName) ?
 							getMergedBeanDefinition(beanName) : null);
 					value = evaluateBeanDefinitionString(strVal, bd);
 				}
-				// 如果需要会进行类型转换后返回结果
+				// 进行必要的类型转换并返回
 				TypeConverter converter = (typeConverter != null ? typeConverter : getTypeConverter());
 				try {
 					return converter.convertIfNecessary(value, type, descriptor.getTypeDescriptor());
@@ -1336,9 +1344,10 @@ public class DefaultListableBeanFactory extends AbstractAutowireCapableBeanFacto
 							converter.convertIfNecessary(value, type, descriptor.getMethodParameter()));
 				}
 			}
-			//处理注入集合（如果注入集合，会多次执行这里，第一次进入返回NULL，第二次进入会返回集合）
+			// 针对依赖是 stream, 数组，Collection, Map 等类型的情况进行依赖bean的分析，
+			// 所返回的对象是 stream,数组，Collection, Map 这样类型的对象，其中的每个元素的类型
+			// 由依赖描述符中的类型决定，该方法调用中真正用到了 typeConverter 进行必要的类型转换
 
-			// 对数组、Collection、Map等类型进行处理，也是支持自动注入的。
 			// 因为是数组或容器，Sprng可以直接把符合类型的bean都注入到数组或容器中，处理逻辑是：
 			// 1.确定容器或数组的组件类型 if else 分别对待，分别处理
 			// 2.调用findAutowireCandidates（核心方法）方法，获取与组件类型匹配的Map(beanName -> bean实例)
@@ -1347,16 +1356,23 @@ public class DefaultListableBeanFactory extends AbstractAutowireCapableBeanFacto
 			if (multipleBeans != null) {
 				return multipleBeans;
 			}
+			// 针对依赖是单个 bean 依赖的情况进行依赖bean的分析
 			// beanName 被注入的类  type 注入的类  descriptor 注入描述
 			// 找到匹配的Beans，可能会包含多个（例如，autowired 默认根据类型匹配，可能会有多个符合条件）
-
 			// 获取所有【类型】匹配的Beans，形成一个Map（此处用Map装，是因为可能不止一个符合条件）
-			// 该方法就特别重要了，对泛型类型的匹配、对@Qualifierd的解析都在这里面，下面详情分解
+			// 该方法特别重要，对泛型类型的匹配、对@Qualifierd的解析都在这里面，下面详情分解
+			// 显然绝大部分情况下，都会走到这里（因为大部分我们都是单值注入~）
+			// findAutowireCandidates可以说又是整个依赖注入的灵魂之一~~~~ 它的查找步骤简述如下：
+			//1、BeanFactoryUtils.beanNamesForTypeIncludingAncestors() 找到这种类型的所有的beanNames（candidateNames）（可能有多个哟，但大多数情况下只有一个）
+			//2、处理resolvableDependencies比如ApplicationContext的依赖，让他们也能够正常注入进去(他们可不作为bean存在容器里~)
+			//3、遍历candidateNames：检查它是否可以被依赖、容器内是否存在bean定义（或者Singleton） 若符合，getBean()出来放在map里
+			//4、若返回的Map不为Empty()了，直接return  表示找到了（当然还可能是多个~~）
+			// 若返回的还是Empty,那就继续检查requiredType是否为Map、Collection等类型，从它里面去找。。。（这种注入case使用太少，此处暂略~）
 			Map<String, Object> matchingBeans = findAutowireCandidates(beanName, type, descriptor);
 			// 若没有符合条件的Bean。。。
 			if (matchingBeans.isEmpty()) {
-				// 并且是必须的，那就抛出没有找到合适的Bean的异常吧
-				// 我们非常熟悉的异常信息：expected at least 1 bean which qualifies as autowire candidate...
+				// 依赖被标记为 required, 但是却没有找打任何匹配的bean，
+				// 抛出异常 NoSuchBeanDefinitionException
 				if (isRequired(descriptor)) {
 					raiseNoMatchingBeanFound(type, descriptor.getResolvableType(), descriptor);
 				}
@@ -1365,14 +1381,23 @@ public class DefaultListableBeanFactory extends AbstractAutowireCapableBeanFacto
 
 			String autowiredBeanName;
 			Object instanceCandidate;
-			// 如果类型匹配的bean不止一个，Spring需要进行筛选，筛选失败的话继续抛出异常
-			// 如果只找到一个该类型的，就不用进这里面来帮忙筛选了~~~~~~~~~
+			// 依赖是单个 bean 依赖，但是却找到了多个依赖bean候选，
+			// 此时参考 @Primary，@Priority 等注解信息决定使用哪个bean作为最终要使用的依赖bean，
+			// 如果这些注解不存在，该步骤返回 null
+			// 需要注意的是：@Qualifier注解在上面就已经生效了~~~~因为AutowireCandidateResolver.isAutowireCandidate是在上面生效的
 			if (matchingBeans.size() > 1) {
-				// 该方法作用：从给定的beans里面筛选出一个符合条件的bean，此筛选步骤还是比较重要的，因此看看可以看看下文解释吧
+				// 该方法作用：从给定的beans里面筛选出一个符合条件的bean，此筛选步骤还是比较重要的
+				// 1、是否标注有@Primary  有这种bean就直接返回（@Primary只允许标注在一个同类型Bean上）
+				// 2、看是否有标注有`javax.annotation.Priority`这个注解的
+				// 3、根据字段field名，去和beanName匹配  匹配上了也行（这就是为何我们有时候不用@Qulifier也没事的原因之一）
+				// 此处注意：descriptor.getDependencyName()这个属性表示字段名，靠的是`DefaultParameterNameDiscoverer`去把字段名取出来的~
 				autowiredBeanName = determineAutowireCandidate(matchingBeans, descriptor);
 				if (autowiredBeanName == null) {
+					// 参考@Primary，@Priority 等注解信息之后仍然分析不出合适的依赖bean，
+					// 此时看依赖是否被标记为 required 或者 不对应多个依赖bean，
+					// 如果是这些情况，使用依赖描述符自身的 resolveNotUnique 方法尝试解决，
+					// 缺省是抛出异常 NoUniqueBeanDefinitionException
 					if (isRequired(descriptor) || !indicatesMultipleBeans(type)) {
-						// 抛出此异常
 						return descriptor.resolveNotUnique(descriptor.getResolvableType(), matchingBeans);
 					}
 					// Spring4.3之后才有：表示如果是required=false，或者就是List Map类型之类的，即使没有找到Bean，也让它不抱错，因为最多注入的是空集合嘛
@@ -1387,17 +1412,18 @@ public class DefaultListableBeanFactory extends AbstractAutowireCapableBeanFacto
 			}
 			else {
 				// We have exactly one match.
-				// 仅仅只匹配上一个，走这里 很简单  直接拿出来即可
+				//  依赖是单个 bean 依赖，正好也只找到了一个候选依赖bean的情况
 				// 注意这里直接拿出来的技巧：不用遍历，直接用iterator.next()即可
 				Map.Entry<String, Object> entry = matchingBeans.entrySet().iterator().next();
 				autowiredBeanName = entry.getKey();
 				instanceCandidate = entry.getValue();
 			}
-			// 把找到的autowiredBeanName 放进去
+			// 调用者提供了不为 null 的参数 autowiredBeanNames ，
+			// 表明需要向调用者通过此参数返回所找到的依赖的 bean 的名称
 			if (autowiredBeanNames != null) {
 				autowiredBeanNames.add(autowiredBeanName);
 			}
-			// 底层就是调用了beanFactory.getBean(beanName);  确保该实例肯定已经被实例化了的
+			// 其实是调用 beanFactory.getBean(autowiredBeanName)  触发获取所依赖的bean的实例
 			if (instanceCandidate instanceof Class) {
 				instanceCandidate = descriptor.resolveCandidate(autowiredBeanName, type, this);
 			}
@@ -1405,14 +1431,19 @@ public class DefaultListableBeanFactory extends AbstractAutowireCapableBeanFacto
 			Object result = instanceCandidate;
 			if (result instanceof NullBean) {
 				if (isRequired(descriptor)) {
+					// 此时如果发现所找到的候选bean其实是一个特殊的bean NullBean,但依赖又被设定为 required，
+					// 这里仍旧抛出异常 NoSuchBeanDefinitionException
 					raiseNoMatchingBeanFound(type, descriptor.getResolvableType(), descriptor);
 				}
+				// 此时如果发现所找到的候选bean其实是一个特殊的bean NullBean,但依赖又没被设定为 required，
+				// 此时返回 null
 				result = null;
 			}
 			// 再一次校验，type和result的type类型是否吻合=====
 			if (!ClassUtils.isAssignableValue(type, result)) {
 				throw new BeanNotOfRequiredTypeException(autowiredBeanName, type, instanceCandidate.getClass());
 			}
+			// 返回最终确定要是用的依赖bean
 			return result;
 		}
 		finally {

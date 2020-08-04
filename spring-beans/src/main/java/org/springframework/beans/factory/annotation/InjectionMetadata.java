@@ -111,6 +111,7 @@ public class InjectionMetadata {
 		Collection<InjectedElement> elementsToIterate =
 				(checkedElements != null ? checkedElements : this.injectedElements);
 		if (!elementsToIterate.isEmpty()) {
+			// 遍历目标bean每个需要注入的成员属性依赖或者成员方法参数依赖，执行相应的依赖注入
 			for (InjectedElement element : elementsToIterate) {
 				if (logger.isTraceEnabled()) {
 					logger.trace("Processing injected element of bean '" + beanName + "': " + element);
@@ -164,7 +165,7 @@ public class InjectionMetadata {
 	 * A single injected element.
 	 */
 	public abstract static class InjectedElement {
-		//实现类包括：field， method， constructor
+		// 实现类包括：field， method， constructor
 		protected final Member member;
 
 		protected final boolean isField;

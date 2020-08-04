@@ -42,6 +42,7 @@ import org.springframework.util.ClassUtils;
  * @author Juergen Hoeller
  * @since 4.0
  */
+// @since 4.0 它能够根据泛型类型进行匹配~~~~  【泛型依赖注入】
 public class GenericTypeAwareAutowireCandidateResolver extends SimpleAutowireCandidateResolver
 		implements BeanFactoryAware {
 

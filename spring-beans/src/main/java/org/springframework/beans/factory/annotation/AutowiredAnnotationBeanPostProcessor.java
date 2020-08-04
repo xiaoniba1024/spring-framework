@@ -132,22 +132,25 @@ public class AutowiredAnnotationBeanPostProcessor extends InstantiationAwareBean
 		implements MergedBeanDefinitionPostProcessor, PriorityOrdered, BeanFactoryAware {
 
 	protected final Log logger = LogFactory.getLog(getClass());
-
+	// 该处理器支持解析的注解们~~~（这里长度设置为4）  默认支持的是3个（当然你可以自己添加自定义的依赖注入的注解   这点非常强大）
 	private final Set<Class<? extends Annotation>> autowiredAnnotationTypes = new LinkedHashSet<>(4);
-
+	// @Autowired(required = false)这个注解的属性值名称
 	private String requiredParameterName = "required";
-
+	// 这个值一般请不要改变（若改成false，效果required = false的作用是相反的了）
 	private boolean requiredParameterValue = true;
 
 	private int order = Ordered.LOWEST_PRECEDENCE - 2;
 
 	@Nullable
 	private ConfigurableListableBeanFactory beanFactory;
-
+	// 对@Lookup方法的支持
 	private final Set<String> lookupMethodsChecked = Collections.newSetFromMap(new ConcurrentHashMap<>(256));
-
+	// 构造函数注入的支持
 	private final Map<Class<?>, Constructor<?>[]> candidateConstructorsCache = new ConcurrentHashMap<>(256);
-
+	// 方法注入、字段filed注入
+	// 此处InjectionMetadata这个类非常重要，到了此处@Autowired注解含义已经没有了，完全被准备成这个元数据了  所以方便我们自定义注解的支持~~~优秀
+	// InjectionMetadata持有targetClass、Collection<InjectedElement> injectedElements等两个重要属性
+	// 其中InjectedElement这个抽象类最重要的两个实现为：AutowiredFieldElement和AutowiredMethodElement
 	private final Map<String, InjectionMetadata> injectionMetadataCache = new ConcurrentHashMap<>(256);
 
 
@@ -158,6 +161,9 @@ public class AutowiredAnnotationBeanPostProcessor extends InstantiationAwareBean
 	 * if available.
 	 */
 	@SuppressWarnings("unchecked")
+	// 这是它唯一构造函数  默认支持下面三种租借（当然@Inject需要额外导包）
+	// 请注意：此处@Value注解也是被依赖注入解析的~~~~~~~~
+	// 当然如果你需要支持到你的自定义注解，你还可以调用下面的set方法添加。。。
 	public AutowiredAnnotationBeanPostProcessor() {
 		this.autowiredAnnotationTypes.add(Autowired.class); // Autowired 注解
 		this.autowiredAnnotationTypes.add(Value.class); // Value 注解
@@ -182,6 +188,7 @@ public class AutowiredAnnotationBeanPostProcessor extends InstantiationAwareBean
 	 * (non-Spring-specific) annotation type to indicate that a member is supposed
 	 * to be autowired.
 	 */
+	// 下面两个方法可以自定义支持的依赖注入注解类型
 	public void setAutowiredAnnotationType(Class<? extends Annotation> autowiredAnnotationType) {
 		Assert.notNull(autowiredAnnotationType, "'autowiredAnnotationType' must not be null");
 		this.autowiredAnnotationTypes.clear();
@@ -230,7 +237,7 @@ public class AutowiredAnnotationBeanPostProcessor extends InstantiationAwareBean
 	public int getOrder() {
 		return this.order;
 	}
-
+	// bean工厂必须是ConfigurableListableBeanFactory的（此处放心使用，唯独只有SimpleJndiBeanFactory不是它的子类而已~）
 	@Override
 	public void setBeanFactory(BeanFactory beanFactory) {
 		if (!(beanFactory instanceof ConfigurableListableBeanFactory)) {
@@ -242,10 +249,14 @@ public class AutowiredAnnotationBeanPostProcessor extends InstantiationAwareBean
 
 
 	@Override
-	//合并parent的属性
-	//如果没有parent，就是当前bean属性本身，如果有parent，则合并parent属性
+	// 第一个非常重要的核心方法~~~  它负责
+	// 1、解析@Autowired等注解然后转换
+	// 2、把注解信息转换为InjectionMetadata然后缓存到上面的injectionMetadataCache里面
+	// postProcessMergedBeanDefinition的执行时机非常早，在doCreateBean()前部分完成bean定义信息的合并
 	public void postProcessMergedBeanDefinition(RootBeanDefinition beanDefinition, Class<?> beanType, String beanName) {
+		// findAutowiringMetadata方法重要，完成了解析注解、缓存下来的操作
 		InjectionMetadata metadata = findAutowiringMetadata(beanName, beanType, null);
+		// 检查~~~(不太重要，可忽略)
 		metadata.checkConfigMembers(beanDefinition);
 	}
 
@@ -420,10 +431,12 @@ public class AutowiredAnnotationBeanPostProcessor extends InstantiationAwareBean
 	// 这里就是解析该Bean的Autowired信息,然后给inject进去
 	@Override
 	public PropertyValues postProcessProperties(PropertyValues pvs, Object bean, String beanName) {
-		// 找到所有的@Autowired元数据-------当前值可以见下图
+		// 这里获取目标bean每个需要注入的依赖,metadata会包含一组元素，每个元素对应一个目标bean :
+		// 1. @Autowired/@Value 注解的属性 或者
+		// 2. @Autowired/@Value 注解的方法参数
 		InjectionMetadata metadata = findAutowiringMetadata(beanName, bean.getClass(), pvs);
 		try {
-			// 所以我们看InjectionMetadata 的inject即可，见下
+			// 执行依赖注入
 			metadata.inject(bean, beanName, pvs);
 		}
 		catch (BeanCreationException ex) {
@@ -466,8 +479,9 @@ public class AutowiredAnnotationBeanPostProcessor extends InstantiationAwareBean
 		}
 	}
 
-	//查找autowired元数据
-	//从缓存中查找，如果没有重新构建
+	// 方法名为查找到该bean的依赖注入元信息，内部只要查找到了就会加入到缓存内，下次没必要再重复查找了~
+	// 它是一个模版方法，真正做事的方法是：buildAutowiringMetadata  它复杂把标注有@Autowired注解的属性转换为Metadata元数据信息  从而消除注解的定义
+	// 此处查找包括了字段依赖注入和方法依赖注入~~~
 	private InjectionMetadata findAutowiringMetadata(String beanName, Class<?> clazz, @Nullable PropertyValues pvs) {
 		// Fall back to class name as cache key, for backwards compatibility with custom callers.
 		String cacheKey = (StringUtils.hasLength(beanName) ? beanName : clazz.getName());
@@ -487,7 +501,10 @@ public class AutowiredAnnotationBeanPostProcessor extends InstantiationAwareBean
 		}
 		return metadata;
 	}
-	//构建autowired对应的元数据
+	// 这里我认为是整个依赖注入前期工作的精髓所在，简单粗暴的可以理解为：它把以依赖注入都转换为InjectionMetadata元信息，待后续使用
+	// 这里会处理字段注入、方法注入~~~
+	// 注意：Autowired使用在static字段/方法上、0个入参的方法上（不会报错 只是无效）
+	// 显然方法的访问级别、是否final都是可以正常被注入进来的~~~
 	private InjectionMetadata buildAutowiringMetadata(final Class<?> clazz) {
 		if (!AnnotationUtils.isCandidateClass(clazz, this.autowiredAnnotationTypes)) {
 			return InjectionMetadata.EMPTY;
@@ -495,20 +512,20 @@ public class AutowiredAnnotationBeanPostProcessor extends InstantiationAwareBean
 
 		List<InjectionMetadata.InjectedElement> elements = new ArrayList<>();
 		Class<?> targetClass = clazz;
-		//递归查找父类中的autowired注解
+		// 小细节：这里是个do while循环，所以即使在父类，父父类上依赖注入依旧是好使的（直到Object后停止）
 		do {
 			final List<InjectionMetadata.InjectedElement> currElements = new ArrayList<>();
 			ReflectionUtils.doWithLocalFields(targetClass, field -> {
 				MergedAnnotation<?> ann = findAutowiredAnnotation(field);
 				if (ann != null) {
-					//不支持static字段
+					// static属性不好使
 					if (Modifier.isStatic(field.getModifiers())) {
 						if (logger.isInfoEnabled()) {
 							logger.info("Autowired annotation is not supported on static fields: " + field);
 						}
 						return;
 					}
-					//判断是否require
+					// 解析required属性（若存在）  最终封装成AutowiredFieldElement
 					boolean required = determineRequiredStatus(ann);
 					currElements.add(new AutowiredFieldElement(field, required));
 				}
@@ -521,13 +538,14 @@ public class AutowiredAnnotationBeanPostProcessor extends InstantiationAwareBean
 				}
 				MergedAnnotation<?> ann = findAutowiredAnnotation(bridgedMethod);
 				if (ann != null && method.equals(ClassUtils.getMostSpecificMethod(method, clazz))) {
-					//不支持static方法
+					// static方法不好使
 					if (Modifier.isStatic(method.getModifiers())) {
 						if (logger.isInfoEnabled()) {
 							logger.info("Autowired annotation is not supported on static methods: " + method);
 						}
 						return;
 					}
+					// 方法没有入参不好使
 					if (method.getParameterCount() == 0) {
 						if (logger.isInfoEnabled()) {
 							logger.info("Autowired annotation should only be used on methods with parameters: " +
@@ -536,18 +554,19 @@ public class AutowiredAnnotationBeanPostProcessor extends InstantiationAwareBean
 					}
 					boolean required = determineRequiredStatus(ann);
 					PropertyDescriptor pd = BeanUtils.findPropertyForMethod(bridgedMethod, clazz);
+					// AutowiredMethodElement里封装了一个PropertyDescriptor（比字段多了一个参数）
 					currElements.add(new AutowiredMethodElement(method, required, pd));
 				}
 			});
-
+			// 小细节：父类的都放在第一位，所以父类是最先完成依赖注入的
 			elements.addAll(0, currElements);
 			targetClass = targetClass.getSuperclass();
 		}
 		while (targetClass != null && targetClass != Object.class);
-
+		// 可见InjectionMetadata就是对clazz和elements的一个包装而已
 		return InjectionMetadata.forElements(elements, clazz);
 	}
-
+	// 只要方法/属性上但凡标注有一个注解，就立马返回了~~（so你标注多个最终生效的只会有一个哦）
 	@Nullable
 	private MergedAnnotation<?> findAutowiredAnnotation(AccessibleObject ao) {
 		MergedAnnotations annotations = MergedAnnotations.from(ao);
@@ -569,6 +588,7 @@ public class AutowiredAnnotationBeanPostProcessor extends InstantiationAwareBean
 	 * @return whether the annotation indicates that a dependency is required
 	 */
 	@SuppressWarnings({"deprecation", "cast"})
+	// 小细节这个方法是protected的
 	protected boolean determineRequiredStatus(MergedAnnotation<?> ann) {
 		// The following (AnnotationAttributes) cast is required on JDK 9+.
 		return determineRequiredStatus((AnnotationAttributes)
@@ -640,6 +660,7 @@ public class AutowiredAnnotationBeanPostProcessor extends InstantiationAwareBean
 	/**
 	 * Class representing injection information about an annotated field.
 	 */
+	// 它的宿主类是AutowiredAnnotationBeanPostProcessor 高内聚低耦合
 	private class AutowiredFieldElement extends InjectionMetadata.InjectedElement {
 
 		private final boolean required;
@@ -648,16 +669,17 @@ public class AutowiredAnnotationBeanPostProcessor extends InstantiationAwareBean
 
 		@Nullable
 		private volatile Object cachedFieldValue;
-
+		// 唯一构造方法
 		public AutowiredFieldElement(Field field, boolean required) {
 			super(field, null);
 			this.required = required;
 		}
+		// 核心方法：字段的依赖注入
 		// 这段代码虽然长，其实核心逻辑还并不在这里，而是在beanFactory Bean工厂的resolveDependency处理依赖实现里
 		@Override
 		protected void inject(Object bean, @Nullable String beanName, @Nullable PropertyValues pvs) throws Throwable {
 			// field 标注了Autowired注解的，而不是所有field
-			// 拿到这个字段名
+			// 显然此处父类的member就指的是filed
 			Field field = (Field) this.member;
 			Object value;
 			// 大多数情况下，这里都是false
@@ -666,6 +688,9 @@ public class AutowiredAnnotationBeanPostProcessor extends InstantiationAwareBean
 			}
 			else {
 				// 把field和required属性，包装成desc描述类
+				// 每个Field都包装成一个DependencyDescriptor
+				// 如果是Method包装成多个DependencyDescriptor,毕竟一个方法可以有多个入参
+				// 此处包装成它后，显然和元数据都无关了，只和Field有关了  完全隔离
 				DependencyDescriptor desc = new DependencyDescriptor(field, this.required);
 				desc.setContainingClass(bean.getClass());
 				// 装载注入的名称，最最最后会被注册（缓存）起来
@@ -674,25 +699,32 @@ public class AutowiredAnnotationBeanPostProcessor extends InstantiationAwareBean
 				// 转换器，没有手动注册，默认都是SimpleTypeConverter===============
 				TypeConverter typeConverter = beanFactory.getTypeConverter();
 				try {
+					// 依赖解析使用 beanFactory#resolveDependency
 					// 把desc传进去，里面还有注解信息、元信息等等，这个方法是根据注解信息寻找到依赖的Bean的核心逻辑
-					// 备注：此部分处理依赖逻辑交给Bean工厂，其实也没毛病。毕竟它处理的相当于是Field
-					// 那么接下里，重点分析resolveDependency这个方法
+					// 获取依赖的value值的工作  最终还是委托给beanFactory.resolveDependency()去完成的~~~~
+					// 这个接口方法由AutowireCapableBeanFactory提供，它提供了从bean工厂里获取依赖值的能力~
 					value = beanFactory.resolveDependency(desc, beanName, autowiredBeanNames, typeConverter);
 				}
 				catch (BeansException ex) {
 					throw new UnsatisfiedDependencyException(null, beanName, new InjectionPoint(field), ex);
 				}
+				// 下面代码是把缓存值缓存起来  让同一个Field注入多次能提高效率
 				synchronized (this) {
 					if (!this.cached) {
-						// 如果已经拿到了这个Bean实例，
+						// 可以看到value！=null并且required=true才会进行缓存的处理
 						if (value != null || this.required) {
+							// 可以看到缓存的值是上面的DependencyDescriptor对象~~~~
 							this.cachedFieldValue = desc;
-							// 把该Bean的依赖关系再注册一次
+							// 把该Bean的依赖关系再注册一次，简单的说就是注册到bean工厂去，比如此处b是依赖a的  所以就注册这个依赖关系进去了
+							// 这个方法是宿主类AutowiredAnnotationBeanPostProcessor的方法
+							// 参考this.beanFactory.registerDependentBean(autowiredBeanName, beanName);
 							registerDependentBeans(beanName, autowiredBeanNames);
 							// 因为是按照类型注入，所以肯定只能指导一个这个的依赖Bean，否则上面解析就已经报错了
+							// autowiredBeanNames里可能会有别名的名称~~~所以size可能大于1
 							if (autowiredBeanNames.size() == 1) {
 								String autowiredBeanName = autowiredBeanNames.iterator().next();
 								// 这里是来处理放置缓存的字段值
+								// beanFactory.isTypeMatch挺重要的~~~~因为@Autowired是按照类型注入的
 								if (beanFactory.containsBean(autowiredBeanName) &&
 										beanFactory.isTypeMatch(autowiredBeanName, field.getType())) {
 									this.cachedFieldValue = new ShortcutDependencyDescriptor(
@@ -708,7 +740,7 @@ public class AutowiredAnnotationBeanPostProcessor extends InstantiationAwareBean
 				}
 			}
 			if (value != null) {
-				// 通过反射的方式给该对象的该字段赋值。注意这里makeAccessible设置为true了，所以即使你的字段是private的也木有关系哦~~~
+				// 不为null，就完成最终的set值  利用反射给filed属性赋值~~~~
 				ReflectionUtils.makeAccessible(field);
 				field.set(bean, value);
 			}
@@ -757,6 +789,7 @@ public class AutowiredAnnotationBeanPostProcessor extends InstantiationAwareBean
 					currDesc.setContainingClass(bean.getClass());
 					descriptors[i] = currDesc;
 					try {
+						// 依赖解析使用 beanFactory#resolveDependency
 						Object arg = beanFactory.resolveDependency(currDesc, beanName, autowiredBeans, typeConverter);
 						if (arg == null && !this.required) {
 							arguments = null;

@@ -51,32 +51,33 @@ import org.springframework.util.ObjectUtils;
  */
 @SuppressWarnings("serial")
 public class DependencyDescriptor extends InjectionPoint implements Serializable {
-	//被注入的类
+	// 保存所包装依赖(成员属性或者成员方法的某个参数)所在的声明类，
+	// 其实该信息在 field/methodParameter 中已经隐含
 	private final Class<?> declaringClass;
-	//方法注入名称
-	@Nullable   // Nullable 类型检查 允许为空
+	// 如果所包装依赖是成员方法的某个参数，则这里记录该成员方法的名称
+	@Nullable
 	private String methodName;
-	//构造注入  方法或者构造器参数
+	// 如果所包装的是成员方法的某个参数，则这里记录该参数的类型
 	@Nullable
 	private Class<?>[] parameterTypes;
-	//方法顺序
+	// 如果所包装的是成员方法的某个参数，则这里记录该参数在该函数参数列表中的索引
 	private int parameterIndex;
-	//字段注入
+	// 如果所包装的是成员属性，则这里记录该成员属性的名称
 	@Nullable
 	private String fieldName;
-	//是否必须
+	// 标识所包装依赖是否必要依赖
 	private final boolean required;
-	//对应 lazy = ture 那么 eager = false  （eager 是否实时）
+	// 标识所包装依赖是否需要饥饿加载 对应 lazy
 	private final boolean eager;
-	//嵌套层次  1 代表是顶部
+	// 标识所包装依赖的嵌套级别  1 代表是顶部
 	private int nestingLevel = 1;
-	//包含类（在什么类包含）
+	// 标识所包装依赖的包含者类，通常和声明类是同一个
 	@Nullable
 	private Class<?> containingClass;
-	//类型处理
+	// 所包装依赖 ResolvableType 的缓存
 	@Nullable
 	private transient volatile ResolvableType resolvableType;
-	//类型描述
+	// 所包装依赖 TypeDescriptor 的缓存
 	@Nullable
 	private transient volatile TypeDescriptor typeDescriptor;
 
@@ -87,6 +88,7 @@ public class DependencyDescriptor extends InjectionPoint implements Serializable
 	 * @param methodParameter the MethodParameter to wrap
 	 * @param required whether the dependency is required
 	 */
+	// 构造函数，包装成员方法参数依赖，依赖解析会使用 饥饿模式
 	public DependencyDescriptor(MethodParameter methodParameter, boolean required) {
 		this(methodParameter, required, true);
 	}
@@ -98,6 +100,7 @@ public class DependencyDescriptor extends InjectionPoint implements Serializable
 	 * @param eager whether this dependency is 'eager' in the sense of
 	 * eagerly resolving potential target beans for type matching
 	 */
+	// 构造函数，包装成员方法参数依赖
 	public DependencyDescriptor(MethodParameter methodParameter, boolean required, boolean eager) {
 		super(methodParameter);
 
@@ -118,6 +121,7 @@ public class DependencyDescriptor extends InjectionPoint implements Serializable
 	 * @param field the field to wrap
 	 * @param required whether the dependency is required
 	 */
+	// 构造函数，包装成员属性依赖，依赖解析会使用 饥饿模式
 	public DependencyDescriptor(Field field, boolean required) {
 		this(field, required, true);
 	}
@@ -142,6 +146,7 @@ public class DependencyDescriptor extends InjectionPoint implements Serializable
 	 * Copy constructor.
 	 * @param original the original descriptor to create a copy from
 	 */
+	// 复制构造函数
 	public DependencyDescriptor(DependencyDescriptor original) {
 		super(original);
 
@@ -270,6 +275,8 @@ public class DependencyDescriptor extends InjectionPoint implements Serializable
 	 * @since 4.3.2
 	 * @see BeanFactory#getBean(String)
 	 */
+	// 使用指定的容器 beanFactory 获取所包装依赖对应的 bean 实例
+    // 该方法会被容器用于自动注入依赖前获取该依赖所对应的 bean 实例
 	public Object resolveCandidate(String beanName, Class<?> requiredType, BeanFactory beanFactory)
 			throws BeansException {
 

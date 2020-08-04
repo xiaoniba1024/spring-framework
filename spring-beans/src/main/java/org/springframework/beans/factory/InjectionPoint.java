@@ -39,12 +39,13 @@ import org.springframework.util.ObjectUtils;
  */
 public class InjectionPoint {
 
+	// 包装函数参数时用于保存所包装的函数参数，内含该参数的注解信息
 	@Nullable
 	protected MethodParameter methodParameter;
-
+	// 包装成员属性时用于保存所包装的成员属性
 	@Nullable
 	protected Field field;
-
+	// 包装成员属性时用于保存所包装的成员属性的注解信息
 	@Nullable
 	private volatile Annotation[] fieldAnnotations;
 
@@ -53,6 +54,7 @@ public class InjectionPoint {
 	 * Create an injection point descriptor for a method or constructor parameter.
 	 * @param methodParameter the MethodParameter to wrap
 	 */
+	// 构造函数，用于包装一个函数参数
 	public InjectionPoint(MethodParameter methodParameter) {
 		Assert.notNull(methodParameter, "MethodParameter must not be null");
 		this.methodParameter = methodParameter;
@@ -62,6 +64,7 @@ public class InjectionPoint {
 	 * Create an injection point descriptor for a field.
 	 * @param field the field to wrap
 	 */
+	// 构造函数，用于包装一个成员属性
 	public InjectionPoint(Field field) {
 		Assert.notNull(field, "Field must not be null");
 		this.field = field;
@@ -71,6 +74,7 @@ public class InjectionPoint {
 	 * Copy constructor.
 	 * @param original the original descriptor to create a copy from
 	 */
+	// 复制构造函数
 	protected InjectionPoint(InjectionPoint original) {
 		this.methodParameter = (original.methodParameter != null ?
 				new MethodParameter(original.methodParameter) : null);
@@ -81,6 +85,7 @@ public class InjectionPoint {
 	/**
 	 * Just available for serialization purposes in subclasses.
 	 */
+	// 缺省构造函数，出于子类序列化目的
 	protected InjectionPoint() {
 	}
 
@@ -90,6 +95,7 @@ public class InjectionPoint {
 	 * <p>Note: Either MethodParameter or Field is available.
 	 * @return the MethodParameter, or {@code null} if none
 	 */
+	// 返回所包装的函数参数，仅在当前对象用于包装函数参数时返回非null
 	@Nullable
 	public MethodParameter getMethodParameter() {
 		return this.methodParameter;
@@ -100,6 +106,7 @@ public class InjectionPoint {
 	 * <p>Note: Either MethodParameter or Field is available.
 	 * @return the Field, or {@code null} if none
 	 */
+	// 返回所包装的成员属性，仅在当前对象用于包装成员属性时返回非null
 	@Nullable
 	public Field getField() {
 		return this.field;
@@ -111,6 +118,7 @@ public class InjectionPoint {
 	 * @throws IllegalStateException if no MethodParameter is available
 	 * @since 5.0
 	 */
+	// 获取所包装的函数参数，不会为null，如果当前对象包装的不是函数参数则抛出异常IllegalStateException
 	protected final MethodParameter obtainMethodParameter() {
 		Assert.state(this.methodParameter != null, "Neither Field nor MethodParameter");
 		return this.methodParameter;
@@ -119,6 +127,7 @@ public class InjectionPoint {
 	/**
 	 * Obtain the annotations associated with the wrapped field or method/constructor parameter.
 	 */
+	// 获取所包装的依赖(方法参数或者成员属性)上的注解信息
 	public Annotation[] getAnnotations() {
 		if (this.field != null) {
 			Annotation[] fieldAnnotations = this.fieldAnnotations;
@@ -139,6 +148,8 @@ public class InjectionPoint {
 	 * @return the annotation instance, or {@code null} if none found
 	 * @since 4.3.9
 	 */
+	// 获取所包装的依赖(方法参数或者成员属性)上的指定类型为annotationType的注解信息，
+	// 如果该类型的注解不存在，则返回null
 	@Nullable
 	public <A extends Annotation> A getAnnotation(Class<A> annotationType) {
 		return (this.field != null ? this.field.getAnnotation(annotationType) :
@@ -149,7 +160,7 @@ public class InjectionPoint {
 	 * Return the type declared by the underlying field or method/constructor parameter,
 	 * indicating the injection type.
 	 */
-	// 被注入的类型
+	// 获取所包装的依赖(方法参数或者成员属性)的类型
 	public Class<?> getDeclaredType() {
 		return (this.field != null ? this.field.getType() : obtainMethodParameter().getParameterType());
 	}
@@ -158,6 +169,8 @@ public class InjectionPoint {
 	 * Returns the wrapped member, containing the injection point.
 	 * @return the Field / Method / Constructor as Member
 	 */
+	//	1.如果所包装的依赖是成员属性则返回该成员属性，
+	//	2.如果所包装的依赖是成员方法参数,则返回对应的成员方法
 	public Member getMember() {
 		return (this.field != null ? this.field : obtainMethodParameter().getMember());
 	}
@@ -171,6 +184,9 @@ public class InjectionPoint {
 	 * such a scenario, transparently with corresponding field annotations.
 	 * @return the Field / Method / Constructor as AnnotatedElement
 	 */
+	 // 1.如果所包装的依赖是成员属性则返回该成员属性
+     // 2.如果所包装的依赖是成员方法参数,则返回对应的成员方法
+	 // 可以认为该方法和 getMemer()等价
 	public AnnotatedElement getAnnotatedElement() {
 		return (this.field != null ? this.field : obtainMethodParameter().getAnnotatedElement());
 	}
