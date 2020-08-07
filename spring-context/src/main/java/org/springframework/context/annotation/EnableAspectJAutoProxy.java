@@ -116,6 +116,7 @@ import java.lang.annotation.Target;
  * @since 3.1
  * @see org.aspectj.lang.annotation.Aspect
  */
+//（说明此注解只会作用于本容器，对子、父容器是无效得）
 @Target(ElementType.TYPE)
 @Retention(RetentionPolicy.RUNTIME)
 @Documented
@@ -126,6 +127,7 @@ public @interface EnableAspectJAutoProxy {
 	 * Indicate whether subclass-based (CGLIB) proxies are to be created as opposed
 	 * to standard Java interface-based proxies. The default is {@code false}.
 	 */
+	// 决定该类采用CGLIB代理还是使用JDK的动态代理（需要实现接口），默认为false，表示使用的是JDK得动态代理技术
 	boolean proxyTargetClass() default false;
 
 	/**
@@ -134,6 +136,9 @@ public @interface EnableAspectJAutoProxy {
 	 * Off by default, i.e. no guarantees that {@code AopContext} access will work.
 	 * @since 4.3.1
 	 */
+	// @since 4.3.1 代理的暴露方式：解决内部调用不能使用代理的场景  默认为false表示不处理
+	// true：这个代理就可以通过AopContext.currentProxy()获得这个代理对象的一个副本（ThreadLocal里面）,从而我们可以很方便得在Spring框架上下文中拿到当前代理对象（处理事务时很方便）
+	// 必须为true才能调用AopContext得方法，否则报错：Cannot find current proxy: Set 'exposeProxy' property on Advised to 'true' to make it available.
 	boolean exposeProxy() default false;
 
 }

@@ -63,6 +63,7 @@ public class AspectMetadata implements Serializable {
 	 * AspectJ reflection information (AspectJ 5 / Java 5 specific).
 	 * Re-resolved on deserialization since it isn't serializable itself.
 	 */
+	// AjType这个字段非常的关键，它表示有非常非常多得关于这个切面的一些数据、方法（位于org.aspectj下）
 	private transient AjType<?> ajType;
 
 	/**
@@ -70,6 +71,8 @@ public class AspectMetadata implements Serializable {
 	 * aspect. Will be the Pointcut.TRUE canonical instance in the
 	 * case of a singleton, otherwise an AspectJExpressionPointcut.
 	 */
+	// 解析切入点表达式用的，但是真正的解析工作为委托给`org.aspectj.weaver.tools.PointcutExpression`来解析的
+	// 若是单例：则是Pointcut.TRUE  否则为AspectJExpressionPointcut
 	private final Pointcut perClausePointcut;
 
 
@@ -83,6 +86,8 @@ public class AspectMetadata implements Serializable {
 
 		Class<?> currClass = aspectClass;
 		AjType<?> ajType = null;
+		// 此处会一直遍历到顶层知道Object  直到找到有一个是Aspect切面就行，然后保存起来
+		// 因此我们的切面写在父类上 也是欧克的
 		while (currClass != Object.class) {
 			AjType<?> ajTypeToCheck = AjTypeSystem.getAjType(currClass);
 			if (ajTypeToCheck.isAspect()) {
@@ -91,15 +96,17 @@ public class AspectMetadata implements Serializable {
 			}
 			currClass = currClass.getSuperclass();
 		}
+		// 由此可见，我们传进来的Class必须是个切面或者切面的子类的~~~
 		if (ajType == null) {
 			throw new IllegalArgumentException("Class '" + aspectClass.getName() + "' is not an @AspectJ aspect");
 		}
+		// 显然Spring AOP目前也不支持优先级的声明。。。
 		if (ajType.getDeclarePrecedence().length > 0) {
 			throw new IllegalArgumentException("DeclarePrecedence not presently supported in Spring AOP");
 		}
 		this.aspectClass = ajType.getJavaClass();
 		this.ajType = ajType;
-
+		// 切面的处在类型：PerClauseKind  由此可议看出，Spring的AOP目前只支持下面4种
 		switch (this.ajType.getPerClause().getKind()) {
 			case SINGLETON:
 				this.perClausePointcut = Pointcut.TRUE;
@@ -165,6 +172,7 @@ public class AspectMetadata implements Serializable {
 	/**
 	 * Return whether the aspect is defined as "perthis" or "pertarget".
 	 */
+	// 判断perThis或者perTarger，最单实例、多实例处理
 	public boolean isPerThisOrPerTarget() {
 		PerClauseKind kind = getAjType().getPerClause().getKind();
 		return (kind == PerClauseKind.PERTARGET || kind == PerClauseKind.PERTHIS);
@@ -173,6 +181,7 @@ public class AspectMetadata implements Serializable {
 	/**
 	 * Return whether the aspect is defined as "pertypewithin".
 	 */
+	// 是否是within的
 	public boolean isPerTypeWithin() {
 		PerClauseKind kind = getAjType().getPerClause().getKind();
 		return (kind == PerClauseKind.PERTYPEWITHIN);
@@ -181,6 +190,7 @@ public class AspectMetadata implements Serializable {
 	/**
 	 * Return whether the aspect needs to be lazily instantiated.
 	 */
+	// 只要不是单例的，就都属于Lazy懒加载，延迟实例化的类型~~~~
 	public boolean isLazilyInstantiated() {
 		return (isPerThisOrPerTarget() || isPerTypeWithin());
 	}

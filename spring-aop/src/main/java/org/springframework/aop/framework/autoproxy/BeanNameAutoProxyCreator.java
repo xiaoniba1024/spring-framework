@@ -44,6 +44,7 @@ import org.springframework.util.StringUtils;
  * @see AbstractAutoProxyCreator
  */
 @SuppressWarnings("serial")
+// 只有名字匹配上了，都会给创建一个代理类
 public class BeanNameAutoProxyCreator extends AbstractAutoProxyCreator {
 
 	@Nullable
@@ -74,6 +75,8 @@ public class BeanNameAutoProxyCreator extends AbstractAutoProxyCreator {
 	/**
 	 * Identify as bean to proxy if the bean name is in the configured list of names.
 	 */
+	// 这里面注意一点：BeanNameAutoProxyCreator的此方法并没有去寻找Advisor，所以需要拦截的话
+	// 只能依靠：setInterceptorNames()来指定拦截器。它是根据名字去Bean容器里取的
 	@Override
 	@Nullable
 	protected Object[] getAdvicesAndAdvisorsForBean(
@@ -81,15 +84,19 @@ public class BeanNameAutoProxyCreator extends AbstractAutoProxyCreator {
 
 		if (this.beanNames != null) {
 			for (String mappedName : this.beanNames) {
+				// 显然这里面，如果你针对的是FactoryBean,也是兼容的~~~
 				if (FactoryBean.class.isAssignableFrom(beanClass)) {
 					if (!mappedName.startsWith(BeanFactory.FACTORY_BEAN_PREFIX)) {
 						continue;
 					}
+					// 对BeanName进行处理，去除掉第一个字符
 					mappedName = mappedName.substring(BeanFactory.FACTORY_BEAN_PREFIX.length());
 				}
+				// 匹配就返回PROXY_WITHOUT_ADDITIONAL_INTERCEPTORS 而不是再返回null了
 				if (isMatch(beanName, mappedName)) {
 					return PROXY_WITHOUT_ADDITIONAL_INTERCEPTORS;
 				}
+				// 这里需要注意的是，如国存在Bean工厂，哪怕任意一个alias匹配都是可以的~~~
 				BeanFactory beanFactory = getBeanFactory();
 				if (beanFactory != null) {
 					String[] aliases = beanFactory.getAliases(beanName);

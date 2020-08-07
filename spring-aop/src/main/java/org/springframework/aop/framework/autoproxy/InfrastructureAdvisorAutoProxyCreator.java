@@ -39,7 +39,7 @@ public class InfrastructureAdvisorAutoProxyCreator extends AbstractAdvisorAutoPr
 		super.initBeanFactory(beanFactory);
 		this.beanFactory = beanFactory;
 	}
-
+	// bean工厂含有这个Bean，且这个Bean的Role是BeanDefinition.ROLE_INFRASTRUCTURE 系统内部用的  才返回true
 	@Override
 	protected boolean isEligibleAdvisorBean(String beanName) {
 		return (this.beanFactory != null && this.beanFactory.containsBeanDefinition(beanName) &&

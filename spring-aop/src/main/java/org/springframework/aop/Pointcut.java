@@ -48,6 +48,7 @@ public interface Pointcut {
 	/**
 	 * Canonical Pointcut instance that always matches.
 	 */
+	// 用于匹配上的一个实例（意思是永远返回true嘛）
 	Pointcut TRUE = TruePointcut.INSTANCE;
 
 }

@@ -46,6 +46,7 @@ public class PrototypeAspectInstanceFactory extends BeanFactoryAspectInstanceFac
 	 */
 	public PrototypeAspectInstanceFactory(BeanFactory beanFactory, String name) {
 		super(beanFactory, name);
+		// 若是单例，直接报错了
 		if (!beanFactory.isPrototype(name)) {
 			throw new IllegalArgumentException(
 					"Cannot use PrototypeAspectInstanceFactory with bean named '" + name + "': not a prototype");

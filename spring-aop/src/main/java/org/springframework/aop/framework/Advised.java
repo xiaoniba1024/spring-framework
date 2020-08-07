@@ -46,6 +46,7 @@ public interface Advised extends TargetClassAware {
 	/**
 	 * Are we proxying the full target class instead of specified interfaces?
 	 */
+	// 返回呗代理了的接口们
 	boolean isProxyTargetClass();
 
 	/**
@@ -58,13 +59,15 @@ public interface Advised extends TargetClassAware {
 	 * Determine whether the given interface is proxied.
 	 * @param intf the interface to check
 	 */
+	// 检查这个指定的接口是否被代理了。。。
 	boolean isInterfaceProxied(Class<?> intf);
 
 	/**
 	 * Change the {@code TargetSource} used by this {@code Advised} object.
 	 * <p>Only works if the configuration isn't {@linkplain #isFrozen frozen}.
 	 * @param targetSource new TargetSource to use
-	 */
+	 */// 设置一个源。只有isFrozen为false才能调用此方法
+
 	void setTargetSource(TargetSource targetSource);
 
 	/**
@@ -100,6 +103,7 @@ public interface Advised extends TargetClassAware {
 	 * when building the actual advisor chain for proxy invocations.
 	 * @see org.springframework.aop.ClassFilter
 	 */
+	// 默认是false，和ClassFilter接口有关，暂时不做讨论
 	void setPreFiltered(boolean preFiltered);
 
 	/**
@@ -112,6 +116,7 @@ public interface Advised extends TargetClassAware {
 	 * Return the advisors applying to this proxy.
 	 * @return a list of Advisors applying to this proxy (never {@code null})
 	 */
+	// 拿到作用在当前代理得所有通知（和切面的适配器）
 	Advisor[] getAdvisors();
 
 	/**
@@ -122,6 +127,7 @@ public interface Advised extends TargetClassAware {
 	 * @param advisor the advisor to add to the end of the chain
 	 * @throws AopConfigException in case of invalid advice
 	 */
+	// 相当于在通知（拦截器）链的最后一个加入一个新的
 	void addAdvisor(Advisor advisor) throws AopConfigException;
 
 	/**
@@ -138,6 +144,7 @@ public interface Advised extends TargetClassAware {
 	 * @return {@code true} if the advisor was removed; {@code false}
 	 * if the advisor was not found and hence could not be removed
 	 */
+	// 按照角标移除一个通知
 	boolean removeAdvisor(Advisor advisor);
 
 	/**
@@ -182,6 +189,8 @@ public interface Advised extends TargetClassAware {
 	 * @see #addAdvice(int, Advice)
 	 * @see org.springframework.aop.support.DefaultPointcutAdvisor
 	 */
+	// 增加通知得相关方法  采用了适配器的模式
+	// 最终都会变成一个DefaultIntroductionAdvisor(包装Advice的)
 	void addAdvice(Advice advice) throws AopConfigException;
 
 	/**

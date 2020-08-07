@@ -45,7 +45,7 @@ import org.springframework.util.ClassUtils;
  */
 @SuppressWarnings("serial")
 public class AspectJAwareAdvisorAutoProxyCreator extends AbstractAdvisorAutoProxyCreator {
-
+	// 默认的排序器，它就不是根据Order来了，而是根据@Afeter @Before类似的标注来排序
 	private static final Comparator<Advisor> DEFAULT_PRECEDENCE_COMPARATOR = new AspectJPrecedenceComparator();
 
 
@@ -64,6 +64,9 @@ public class AspectJAwareAdvisorAutoProxyCreator extends AbstractAdvisorAutoProx
 	 * advisor should run first. "On the way out" of a join point, the highest precedence
 	 * advisor should run last.
 	 */
+	// 核心逻辑：它重写了排序
+	// 这个排序和`org.aspectj.util`提供的PartialOrder和PartialComparable有关 具体不详叙了
+	// 这块排序算法还是比较复杂的，控制着最终的执行顺序~
 	@Override
 	@SuppressWarnings("unchecked")
 	protected List<Advisor> sortAdvisors(List<Advisor> advisors) {
@@ -90,6 +93,10 @@ public class AspectJAwareAdvisorAutoProxyCreator extends AbstractAdvisorAutoProx
 	 * These additional advices are needed when using AspectJ expression pointcuts
 	 * and when using AspectJ-style advice.
 	 */
+	// 这个就是对已有的Advisor做了一个扩展：
+	// AspectJProxyUtils这个工具类只有这一个方法  （其实每次addAspect()的时候，都会调用此方法）
+	// Capable：能干的  有才华的
+	// 它的作用：（若存在AspectJ的Advice），就会在advisors的第一个位置加入`ExposeInvocationInterceptor.ADVISOR`这个advisor
 	@Override
 	protected void extendAdvisors(List<Advisor> candidateAdvisors) {
 		AspectJProxyUtils.makeAdvisorChainAspectJCapableIfNecessary(candidateAdvisors);
@@ -99,12 +106,14 @@ public class AspectJAwareAdvisorAutoProxyCreator extends AbstractAdvisorAutoProx
 	protected boolean shouldSkip(Class<?> beanClass, String beanName) {
 		// TODO: Consider optimization by caching the list of the aspect names
 		List<Advisor> candidateAdvisors = findCandidateAdvisors();
+		// 这个相当于AspectJPointcutAdvisor的子类不要拦截、AspectJ切面自己自己的所有方法不要去拦截。。。
 		for (Advisor advisor : candidateAdvisors) {
 			if (advisor instanceof AspectJPointcutAdvisor &&
 					((AspectJPointcutAdvisor) advisor).getAspectName().equals(beanName)) {
 				return true;
 			}
 		}
+		// 父类返回的false
 		return super.shouldSkip(beanClass, beanName);
 	}
 

@@ -33,12 +33,15 @@ import org.springframework.lang.Nullable;
  * @see org.springframework.aop.framework.ReflectiveMethodInvocation
  * @see org.springframework.aop.support.DelegatingIntroductionInterceptor
  */
+// 这是Spring提供的对MethodInvocation 的一个扩展。
+// 它允许访问  方法被调用的代理对象以及其它相关信息
 public interface ProxyMethodInvocation extends MethodInvocation {
 
 	/**
 	 * Return the proxy that this method invocation was made through.
 	 * @return the original proxy object
 	 */
+	// 返回代理对象
 	Object getProxy();
 
 	/**
@@ -48,6 +51,7 @@ public interface ProxyMethodInvocation extends MethodInvocation {
 	 * @return an invocable clone of this invocation.
 	 * {@code proceed()} can be called once per clone.
 	 */
+	// 克隆一个，使用的Object得clone方法
 	MethodInvocation invocableClone();
 
 	/**
@@ -66,6 +70,7 @@ public interface ProxyMethodInvocation extends MethodInvocation {
 	 * in this chain.
 	 * @param arguments the argument array
 	 */
+	// 设置参数  增强器、通知们执行的时候可能会用到
 	void setArguments(Object... arguments);
 
 	/**
@@ -75,6 +80,7 @@ public interface ProxyMethodInvocation extends MethodInvocation {
 	 * @param key the name of the attribute
 	 * @param value the value of the attribute, or {@code null} to reset it
 	 */
+	// 添加一些属性kv。这些kv并不会用于AOP框架内，而是保存下来给特殊的一些拦截器实用
 	void setUserAttribute(String key, @Nullable Object value);
 
 	/**

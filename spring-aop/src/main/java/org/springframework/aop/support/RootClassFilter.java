@@ -38,7 +38,7 @@ public class RootClassFilter implements ClassFilter, Serializable {
 		this.clazz = clazz;
 	}
 
-
+	// 显然，传进来的candidate必须是clazz的子类才行
 	@Override
 	public boolean matches(Class<?> candidate) {
 		return this.clazz.isAssignableFrom(candidate);

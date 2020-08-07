@@ -48,11 +48,11 @@ import org.springframework.util.Assert;
  */
 @SuppressWarnings("serial")
 public abstract class AbstractAdvisorAutoProxyCreator extends AbstractAutoProxyCreator {
-
+	// 这个类是重点
 	@Nullable
 	private BeanFactoryAdvisorRetrievalHelper advisorRetrievalHelper;
 
-
+	// 重写了setBeanFactory方法，事需要保证bean工厂必须是ConfigurableListableBeanFactory
 	@Override
 	public void setBeanFactory(BeanFactory beanFactory) {
 		super.setBeanFactory(beanFactory);
@@ -60,6 +60,9 @@ public abstract class AbstractAdvisorAutoProxyCreator extends AbstractAutoProxyC
 			throw new IllegalArgumentException(
 					"AdvisorAutoProxyCreator requires a ConfigurableListableBeanFactory: " + beanFactory);
 		}
+		// 就这一句话：this.advisorRetrievalHelper = new BeanFactoryAdvisorRetrievalHelperAdapter(beanFactory)
+		// 对Helper进行初始化，找advisor最终事委托给他了的
+		// BeanFactoryAdvisorRetrievalHelperAdapter继承自BeanFactoryAdvisorRetrievalHelper,为私有内部类，主要重写了isEligibleBean（）方法，调用.this.isEligibleAdvisorBean(beanName)方法
 		initBeanFactory((ConfigurableListableBeanFactory) beanFactory);
 	}
 
@@ -67,12 +70,14 @@ public abstract class AbstractAdvisorAutoProxyCreator extends AbstractAutoProxyC
 		this.advisorRetrievalHelper = new BeanFactoryAdvisorRetrievalHelperAdapter(beanFactory);
 	}
 
-
+	// 这是复写父类的方法，也是实现代理方式。找到作用在这个Bean里面的切点方法
+	// 当然 最终最终事委托给BeanFactoryAdvisorRetrievalHelper去做的
 	@Override
 	@Nullable
 	protected Object[] getAdvicesAndAdvisorsForBean(
 			Class<?> beanClass, String beanName, @Nullable TargetSource targetSource) {
-
+		// findEligibleAdvisors：显然这个是具体的实现方法了。
+		// eligible：合格的  合适的
 		List<Advisor> advisors = findEligibleAdvisors(beanClass, beanName);
 		if (advisors.isEmpty()) {
 			return DO_NOT_PROXY;
@@ -90,11 +95,23 @@ public abstract class AbstractAdvisorAutoProxyCreator extends AbstractAutoProxyC
 	 * @see #sortAdvisors
 	 * @see #extendAdvisors
 	 */
+	// 找出合适的Advisor们~~~  主要分了下面几步
 	protected List<Advisor> findEligibleAdvisors(Class<?> beanClass, String beanName) {
+		// 首先找出所有的候选的Advisors，（根据名字判断）实现见下面~~~~
 		List<Advisor> candidateAdvisors = findCandidateAdvisors();
+		// 对上面找到的候选的Advisors们，进行过滤操作~~~  看看Advisor能否被用在Bean上（根据Advisor的PointCut判断）
+		// 主要依赖于AopUtils.findAdvisorsThatCanApply()方法  在工具类讲解中有详细分析的
+		// 逻辑简单概述为：看目标类是不是符合代理对象的条件，如果符合就把Advisor加到集合中，最后返回集合
+		// 简单的说：它就是会根据ClassFilter和MethodMatcher等等各种匹配。（但凡只有有一个方法被匹配上了，就会给他创建代理类了）
+		// 方法用的ReflectionUtils.getAllDeclaredMethods，**因此哪怕是私有方法，匹配上都会给创建的代理对象，这点务必要特别特别的注意**
 		List<Advisor> eligibleAdvisors = findAdvisorsThatCanApply(candidateAdvisors, beanClass, beanName);
+		// 提供一个钩子。子类可以复写此方法  然后对eligibleAdvisors进行处理（增加/删除/修改等等）
+		// AspectJAwareAdvisorAutoProxyCreator提供了实现
 		extendAdvisors(eligibleAdvisors);
+		// 如果最终还有，那就排序吧
 		if (!eligibleAdvisors.isEmpty()) {
+			// 默认排序方式：AnnotationAwareOrderComparator.sort()排序  这个排序和Order接口有关~~~
+			// 但是子类：AspectJAwareAdvisorAutoProxyCreator有复写此排序方法，需要特别注意~~~
 			eligibleAdvisors = sortAdvisors(eligibleAdvisors);
 		}
 		return eligibleAdvisors;
@@ -104,6 +121,8 @@ public abstract class AbstractAdvisorAutoProxyCreator extends AbstractAutoProxyC
 	 * Find all candidate Advisors to use in auto-proxying.
 	 * @return the List of candidate Advisors
 	 */
+	// 找到候选的Advisor们~~~~   抽象类自己的实现，是直接把这件事委托给了advisorRetrievalHelper
+	// AnnotationAwareAspectJAutoProxyCreator对它有复写
 	protected List<Advisor> findCandidateAdvisors() {
 		Assert.state(this.advisorRetrievalHelper != null, "No BeanFactoryAdvisorRetrievalHelper available");
 		return this.advisorRetrievalHelper.findAdvisorBeans();
@@ -136,6 +155,8 @@ public abstract class AbstractAdvisorAutoProxyCreator extends AbstractAutoProxyC
 	 * @param beanName the name of the Advisor bean
 	 * @return whether the bean is eligible
 	 */
+	// 判断给定的BeanName这个Bean，是否是合格的(BeanFactoryAdvisorRetrievalHelper里会用到这个属性)
+	// 其中：DefaultAdvisorAutoProxyCreator和InfrastructureAdvisorAutoProxyCreator有复写
 	protected boolean isEligibleAdvisorBean(String beanName) {
 		return true;
 	}
@@ -169,6 +190,7 @@ public abstract class AbstractAdvisorAutoProxyCreator extends AbstractAutoProxyC
 	/**
 	 * This auto-proxy creator always returns pre-filtered Advisors.
 	 */
+	// 此处复写了父类的方法，返回true了，表示
 	@Override
 	protected boolean advisorsPreFiltered() {
 		return true;

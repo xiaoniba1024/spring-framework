@@ -43,6 +43,7 @@ public class ProxyCreatorSupport extends AdvisedSupport {
 	/**
 	 * Create a new ProxyCreatorSupport instance.
 	 */
+	// new了一个aopProxyFactory 
 	public ProxyCreatorSupport() {
 		this.aopProxyFactory = new DefaultAopProxyFactory();
 	}
@@ -102,6 +103,7 @@ public class ProxyCreatorSupport extends AdvisedSupport {
 		if (!this.active) {
 			activate();
 		}
+		// 由此可议看出，它还是委托给了`AopProxyFactory`去做这件事~~~  它的实现类为：DefaultAopProxyFactory
 		return getAopProxyFactory().createAopProxy(this);
 	}
 

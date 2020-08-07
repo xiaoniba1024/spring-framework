@@ -45,6 +45,7 @@ import org.springframework.lang.Nullable;
  * @since 2.0.3
  */
 @SuppressWarnings("serial")
+// 生成拦截器链
 public class DefaultAdvisorChainFactory implements AdvisorChainFactory, Serializable {
 
 	@Override
@@ -55,6 +56,7 @@ public class DefaultAdvisorChainFactory implements AdvisorChainFactory, Serializ
 		// but we need to preserve order in the ultimate list.
 		AdvisorAdapterRegistry registry = GlobalAdvisorAdapterRegistry.getInstance();
 		Advisor[] advisors = config.getAdvisors();
+		// 拿到代理里面所有的通知们：getAdvisors
 		List<Object> interceptorList = new ArrayList<>(advisors.length);
 		Class<?> actualClass = (targetClass != null ? targetClass : method.getDeclaringClass());
 		Boolean hasIntroductions = null;
@@ -77,6 +79,7 @@ public class DefaultAdvisorChainFactory implements AdvisorChainFactory, Serializ
 					}
 					if (match) {
 						MethodInterceptor[] interceptors = registry.getInterceptors(advisor);
+						// 动态匹配
 						if (mm.isRuntime()) {
 							// Creating a new object instance in the getInterceptors() method
 							// isn't a problem as we normally cache created chains.
@@ -84,6 +87,7 @@ public class DefaultAdvisorChainFactory implements AdvisorChainFactory, Serializ
 								interceptorList.add(new InterceptorAndDynamicMethodMatcher(interceptor, mm));
 							}
 						}
+						// 静态匹配
 						else {
 							interceptorList.addAll(Arrays.asList(interceptors));
 						}
