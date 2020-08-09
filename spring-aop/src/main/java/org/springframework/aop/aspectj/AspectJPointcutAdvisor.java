@@ -33,9 +33,9 @@ import org.springframework.util.Assert;
  * @since 2.0
  */
 public class AspectJPointcutAdvisor implements PointcutAdvisor, Ordered {
-
+	// AbstractAspectJAdvice通知
 	private final AbstractAspectJAdvice advice;
-
+	// 可以接受任意的Pointcut，可谓非常的通用（当然也包含切点表达式啦）
 	private final Pointcut pointcut;
 
 	@Nullable
@@ -46,9 +46,11 @@ public class AspectJPointcutAdvisor implements PointcutAdvisor, Ordered {
 	 * Create a new AspectJPointcutAdvisor for the given advice.
 	 * @param advice the AbstractAspectJAdvice to wrap
 	 */
+	// 只有这一个构造函数，包装一个advice
 	public AspectJPointcutAdvisor(AbstractAspectJAdvice advice) {
 		Assert.notNull(advice, "Advice must not be null");
 		this.advice = advice;
+		// 然后pointcut根据advice直接给生成了一个。这是AbstractAspectJAdvice#buildSafePointcut的方法
 		this.pointcut = advice.buildSafePointcut();
 	}
 

@@ -29,6 +29,7 @@ package org.springframework.aop;
  * @since 04.04.2003
  * @see IntroductionInterceptor
  */
+// 它是一个Advisor，同时也是一个IntroductionInfo 
 public interface IntroductionAdvisor extends Advisor, IntroductionInfo {
 
 	/**
@@ -38,6 +39,7 @@ public interface IntroductionAdvisor extends Advisor, IntroductionInfo {
 	 * matching doesn't make sense to introductions.
 	 * @return the class filter
 	 */
+	// 它只有ClassFilter，因为它只能作用在类层面上
 	ClassFilter getClassFilter();
 
 	/**
@@ -46,6 +48,7 @@ public interface IntroductionAdvisor extends Advisor, IntroductionInfo {
 	 * @throws IllegalArgumentException if the advised interfaces can't be
 	 * implemented by the introduction advice
 	 */
+	// 判断这些接口，是否真的能够增强。  DynamicIntroductionAdvice#implementsInterface()方法
 	void validateInterfaces() throws IllegalArgumentException;
 
 }

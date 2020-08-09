@@ -83,7 +83,11 @@ public class AnnotationAwareAspectJAutoProxyCreator extends AspectJAwareAdvisorA
 	// 此处一定要记得调用：super.initBeanFactory(beanFactory);
 	@Override
 	protected void initBeanFactory(ConfigurableListableBeanFactory beanFactory) {
+		// 使用基类方法初始化 beanFactory，真正的逻辑时构造一个能够从容器中获取所有
+		// Spring Advisor bean的BeanFactoryAdvisorRetrievalHelper
 		super.initBeanFactory(beanFactory);
+		// 下面的逻辑是构造 aspectJAdvisorsBuilder , 用于通过反射方法从容器中获取
+		// 所有带有@AspectJ注解的 beans
 		if (this.aspectJAdvisorFactory == null) {
 			this.aspectJAdvisorFactory = new ReflectiveAspectJAdvisorFactory(beanFactory);
 		}
@@ -91,19 +95,28 @@ public class AnnotationAwareAspectJAutoProxyCreator extends AspectJAwareAdvisorA
 				new BeanFactoryAspectJAdvisorsBuilderAdapter(beanFactory, this.aspectJAdvisorFactory);
 	}
 
-	// 拿到所有的候选的advisor们。请注意：这里没有先调用了父类的super.findCandidateAdvisors()  去容器里找出来一些
-	// 然后，然后自己又通过aspectJAdvisorsBuilder.buildAspectJAdvisors()  解析@Aspect的方法得到一些Advisor
+	// 找到容器中所有的Spring Advisor beans 和 @AspectJ 注解的 beans，都封装成
+	// Advisor 形式返回一个列表
 	@Override
 	protected List<Advisor> findCandidateAdvisors() {
 		// Add all the Spring advisors found according to superclass rules.
+		// 使用基类Spring Advisor查找机制查找容器中所有的Spring Advisor
+		// 其实就是父类使用所构造的BeanFactoryAdvisorRetrievalHelper从
+		// 容器中获取所有的Spring Advisor beans。
 		List<Advisor> advisors = super.findCandidateAdvisors();
 		// Build Advisors for all AspectJ aspects in the bean factory.
+		// 使用aspectJAdvisorsBuilder从容器中获取所有@AspectJ 注解的bean，并将它们包装成Advisor
 		if (this.aspectJAdvisorsBuilder != null) {
 			advisors.addAll(this.aspectJAdvisorsBuilder.buildAspectJAdvisors());
 		}
+		// 现在列表advisors包含容器中所有的Spring Advisor beans 和 @AspectJ 注解的 beans,
+		// 现在它们都以 Advisor 的形式存在
 		return advisors;
 	}
-	// 加了中类型   如果该Bean自己本身就是一个@Aspect， 那也认为是基础主键，不要切了
+	// 判断指定的类是否是一个基础设置类:
+	// 1. 如果父类的 isInfrastructureClass 断定它是一个基础设施类，就认为它是;
+	// 2. 如果这是一个@Aspect注解的类，也认为这是一个基础设施类;
+	// 一旦某个bean类被认为是基础设施类，那么将不会对该类实施代理机制
 	@Override
 	protected boolean isInfrastructureClass(Class<?> beanClass) {
 		// Previously we setProxyTargetClass(true) in the constructor, but that has too
@@ -124,7 +137,8 @@ public class AnnotationAwareAspectJAutoProxyCreator extends AspectJAwareAdvisorA
 	 * {@code null} and all beans are included. If "includePatterns" is non-null,
 	 * then one of the patterns must match.
 	 */
-	// 拿传入的正则模版进行匹配（没传就返回true，所有的Advisor都会生效）
+	// 检查给定名称的bean是否是符合条件的Aspect bean。这里是依据属性 includePatterns 做检查的，
+	// 当 includePatterns 属性为 null 时，总是返回 true。
 	protected boolean isEligibleAspectBean(String beanName) {
 		if (this.includePatterns == null) {
 			return true;

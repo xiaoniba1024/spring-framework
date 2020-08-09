@@ -93,12 +93,11 @@ public class AspectJAwareAdvisorAutoProxyCreator extends AbstractAdvisorAutoProx
 	 * These additional advices are needed when using AspectJ expression pointcuts
 	 * and when using AspectJ-style advice.
 	 */
-	// 这个就是对已有的Advisor做了一个扩展：
-	// AspectJProxyUtils这个工具类只有这一个方法  （其实每次addAspect()的时候，都会调用此方法）
-	// Capable：能干的  有才华的
-	// 它的作用：（若存在AspectJ的Advice），就会在advisors的第一个位置加入`ExposeInvocationInterceptor.ADVISOR`这个advisor
+	// 往 advice chain, 也就是这个candidateAdvisors的开头增加一个ExposeInvocationInterceptor实例，
+	// 在使用 AspectJ pointcut 表达式 和 AspectJ风格的advice 时用得到这个Interceptor
 	@Override
 	protected void extendAdvisors(List<Advisor> candidateAdvisors) {
+		// 具体添加动作交给工具类 AspectJProxyUtils 处理
 		AspectJProxyUtils.makeAdvisorChainAspectJCapableIfNecessary(candidateAdvisors);
 	}
 

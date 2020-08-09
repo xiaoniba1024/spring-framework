@@ -41,9 +41,10 @@ class AspectJAutoProxyRegistrar implements ImportBeanDefinitionRegistrar {
 	@Override
 	public void registerBeanDefinitions(
 			AnnotationMetadata importingClassMetadata, BeanDefinitionRegistry registry) {
-		//这部非常重要，就是去注册了一个基于注解的自动代理创建器（如国需要的话）  当然，下面还会着重分析
+		// 注册APC bean : AnnotationAwareAspectJAutoProxyCreator
 		AopConfigUtils.registerAspectJAnnotationAutoProxyCreatorIfNecessary(registry);
-
+		// 从导入者类上获取注解@EnableAspectJAutoProxy的属性 ， 根据其中的 proxyTargetClass/exposeProxy
+		// 对所创建的 APC 做设置
 		AnnotationAttributes enableAspectJAutoProxy =
 				AnnotationConfigUtils.attributesFor(importingClassMetadata, EnableAspectJAutoProxy.class);
 		if (enableAspectJAutoProxy != null) {

@@ -91,12 +91,15 @@ public class AsyncAnnotationAdvisor extends AbstractPointcutAdvisor implements B
 	 * @since 5.1
 	 * @see AnnotationAsyncExecutionInterceptor#getDefaultExecutor(BeanFactory)
 	 */
+	// executor：可以自己指定异步任务的执行器
+	// exceptionHandler：异步异常的处理器
 	@SuppressWarnings("unchecked")
 	public AsyncAnnotationAdvisor(
 			@Nullable Supplier<Executor> executor, @Nullable Supplier<AsyncUncaughtExceptionHandler> exceptionHandler) {
 
 		Set<Class<? extends Annotation>> asyncAnnotationTypes = new LinkedHashSet<>(2);
 		asyncAnnotationTypes.add(Async.class);
+		// 支持EJB的注解：@Asynchronous
 		try {
 			asyncAnnotationTypes.add((Class<? extends Annotation>)
 					ClassUtils.forName("javax.ejb.Asynchronous", AsyncAnnotationAdvisor.class.getClassLoader()));
@@ -104,7 +107,9 @@ public class AsyncAnnotationAdvisor extends AbstractPointcutAdvisor implements B
 		catch (ClassNotFoundException ex) {
 			// If EJB 3.1 API not present, simply ignore.
 		}
+		// buildAdvice: new AnnotationAsyncExecutionInterceptor(executor, exceptionHandler)   它是个MethodInterceptor  环绕通知器
 		this.advice = buildAdvice(executor, exceptionHandler);
+		// 把asyncAnnotationTypes交给buildPointcut，它最终是个ComposablePointcut，会把这两种注解都支持。union起来 或者的关系
 		this.pointcut = buildPointcut(asyncAnnotationTypes);
 	}
 

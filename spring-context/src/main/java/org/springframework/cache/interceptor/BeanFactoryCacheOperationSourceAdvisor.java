@@ -29,11 +29,12 @@ import org.springframework.lang.Nullable;
  * @since 3.1
  */
 @SuppressWarnings("serial")
+// @since 3.1  毕竟Spring的整个org.springframework.cache.Cache体系都是从这里开始的。（@Cacheable...等等）
 public class BeanFactoryCacheOperationSourceAdvisor extends AbstractBeanFactoryPointcutAdvisor {
-
+	// 显然它最重要的是持有这个引用（Cache章节详细介绍了它）
 	@Nullable
 	private CacheOperationSource cacheOperationSource;
-
+	// Pointcut使用的是CacheOperationSourcePointcut
 	private final CacheOperationSourcePointcut pointcut = new CacheOperationSourcePointcut() {
 		@Override
 		@Nullable

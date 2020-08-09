@@ -112,7 +112,10 @@ public abstract class AbstractAutoProxyCreator extends ProxyProcessorSupport
 	protected final Log logger = LogFactory.getLog(getClass());
 
 	/** Default is global AdvisorAdapterRegistry. */
-	// 实现类就是我们熟悉的它：	DefaultAdvisorAdapterRegistry
+	// 用于将各种类型的拦截器适配成 Spring Advisor 的工具，缺省值是一个 DefaultAdvisorAdapterRegistry 对象,
+	// 当前 BeanPostProcessor 使用者可以从外部设定一个不同值
+	// 1. 来源类型可能是 Spring Advisor, 或者 AOP 标准 MethodInterceptor,
+	// 2. 目标类型统一包装变成 Spring Advisor : org.springframework.aop.Advisor
 	private AdvisorAdapterRegistry advisorAdapterRegistry = GlobalAdvisorAdapterRegistry.getInstance();
 
 	/**
@@ -122,8 +125,11 @@ public abstract class AbstractAutoProxyCreator extends ProxyProcessorSupport
 	private boolean freezeProxy = false;
 
 	/** Default is no common interceptors. */
+	// 通用拦截器bean的名称，需要当前 BeanPostProcessor 使用者从外部设置，缺省为空
+	// 该信息会被用于从容器获得相应的拦截器 bean 实例
 	private String[] interceptorNames = new String[0];
-
+	// 创建某个bean的代理对象时，先应用通用拦截器还是先应用专用拦截器，
+	// true 表示先应用通用拦截器
 	private boolean applyCommonInterceptorsFirst = true;
 	// 目标源的创建器。它有一个方法getTargetSource(Class<?> beanClass, String beanName)
 	// 两个实现类：QuickTargetSourceCreator和LazyInitTargetSourceCreator
@@ -133,13 +139,15 @@ public abstract class AbstractAutoProxyCreator extends ProxyProcessorSupport
 
 	@Nullable
 	private BeanFactory beanFactory;
-
+	// cache : 记录 targetSource 不为 null 的 bean 的名称
 	private final Set<String> targetSourcedBeans = Collections.newSetFromMap(new ConcurrentHashMap<>(16));
-
+	// cache : key 通过方法 #getCacheKey 计算
 	private final Map<Object, Object> earlyProxyReferences = new ConcurrentHashMap<>(16);
-
+	// cache : key 通过方法 #getCacheKey 计算
 	private final Map<Object, Class<?>> proxyTypes = new ConcurrentHashMap<>(16);
-
+	// cache : key 通过方法 #getCacheKey 计算
+	// 某一个 entry 的值为 true 表示该 bean 已经创建代理对象，
+	// 为 false 表示经过检测已经判断出该 bean 不需要创建代理对象
 	private final Map<Object, Boolean> advisedBeans = new ConcurrentHashMap<>(256);
 
 
@@ -245,51 +253,47 @@ public abstract class AbstractAutoProxyCreator extends ProxyProcessorSupport
 	// getEarlyBeanReference()它是为了解决单例bean之间的循环依赖问题，提前将代理对象暴露出去
 	@Override
 	public Object getEarlyBeanReference(Object bean, String beanName) {
+		// 根据给定义的bean class 和 bean 名称构建一个 Cache 主键
 		Object cacheKey = getCacheKey(bean.getClass(), beanName);
 		this.earlyProxyReferences.put(cacheKey, bean);
 		return wrapIfNecessary(bean, beanName, cacheKey);
 	}
-	// 这个很重要，在Bean实例化之前，先给一个机会，看看缓存里有木有，有就直接返回得了
-	// 简单的说：其主要目的在于如果用户使用了自定义的TargetSource对象，则直接使用该对象生成目标对象，而不会使用Spring的默认逻辑生成目标对象
-	// (并且这里会判断各个切面逻辑是否可以应用到当前bean上)
+	// InstantiationAwareBeanPostProcessor接口(BeanPostProcessor的子接口)定义的方法，
+	// 在指定bean创建过程刚开始,尚未创建bean对象时，检查如果该bean需要创建代理，并且存在自定义
+	// TargetSource，基于TargetSource和匹配的advice/advisor为该bean创建代理对象
 	@Override
 	public Object postProcessBeforeInstantiation(Class<?> beanClass, String beanName) {
+		// 根据给定义的bean class 和 bean 名称构建一个 Cache 主键
 		Object cacheKey = getCacheKey(beanClass, beanName);
-		// beanName无效或者targetSourcedBeans里不包含此Bean
 		if (!StringUtils.hasLength(beanName) || !this.targetSourcedBeans.contains(beanName)) {
-			// advisedBeans：已经被通知了的（被代理了的）Bean~~~~  如果在这里面  也返回null
 			if (this.advisedBeans.containsKey(cacheKey)) {
+				// 已经被该InstantiationAwareBeanPostProcessor的该方法处理过，这里不再处理
 				return null;
 			}
-			// isInfrastructureClass:Advice、Pointcut、Advisor、AopInfrastructureBean的子类，表示是框架所属的Bean
-			// shouldSkip:默认都是返回false的。AspectJAwareAdvisorAutoProxyCreator重写此方法：只要存在一个Advisor   ((AspectJPointcutAdvisor) advisor).getAspectName().equals(beanName)成立  就返回true
 			if (isInfrastructureClass(beanClass) || shouldSkip(beanClass, beanName)) {
+				// 该bean尚未被该bean该方法处理过，
+				// 但如果是基础设施bean或者是需要被排除的bean，则将它们添加到缓存中，值为FALSE
 				this.advisedBeans.put(cacheKey, Boolean.FALSE);
 				return null;
 			}
 		}
-
-		// 到这，只有在TargetSource中没有进行缓存，并且应该被切面逻辑环绕，但是目前还未生成代理对象的bean才会通过此方法
-
-		// 如果我们有TargetSourceCreator，这里就会创建一个代理对象
-		// getCustomTargetSource逻辑：存在TargetSourceCreator  并且 beanFactory.containsBean(beanName)  然后遍历所有的TargetSourceCreator，调用getTargetSource谁先创建不为null就终止
+		// 尝试使用自定义的 TargetSourceCreator[] this.customTargetSourceCreators 创建目标bean的 TargetSource
 		TargetSource targetSource = getCustomTargetSource(beanClass, beanName);
-		// 若创建好了这个代理对象，继续进一步的操作：：：
 		if (targetSource != null) {
+			// 如果使用自定义的 TargetSourceCreator[] this.customTargetSourceCreators 能够创建出目标bean
+			// 的 TargetSource , 则在该生命周期回调方法中创建该 bean 的代理对象
 			if (StringUtils.hasLength(beanName)) {
 				// 缓存起来
 				this.targetSourcedBeans.add(beanName);
 			}
-			// getAdvicesAndAdvisorsForBean：方法判断当前bean是否需要进行代理，若需要则返回满足条件的Advice或者Advisor集合
-			// 这个方法由子类实现，AbstractAdvisorAutoProxyCreator和BeanNameAutoProxyCreator  代表中两种不同的代理方式
+			// 如果该bean存在TargetSource，在这里直接创建代理对象，而不再走主流程
 			Object[] specificInterceptors = getAdvicesAndAdvisorsForBean(beanClass, beanName, targetSource);
-			// 顾名思义，就是根据目标对象创建代理对象的核心逻辑了 下面详解
 			Object proxy = createProxy(beanClass, beanName, specificInterceptors, targetSource);
-			// 把创建好的代理  缓存~~~
 			this.proxyTypes.put(cacheKey, proxy.getClass());
+			// 返回所创建的代理对象
 			return proxy;
 		}
-
+		// 返回 null 表示当前方法没有做任何处理，bean 创建尚未完成，主流程继续进行
 		return null;
 	}
 
@@ -338,6 +342,7 @@ public abstract class AbstractAutoProxyCreator extends ProxyProcessorSupport
 	 * @param beanName the bean name
 	 * @return the cache key for the given class and name
 	 */
+	// 根据给定义的bean class 和 bean 名称构建一个 Cache 主键
 	protected Object getCacheKey(Class<?> beanClass, @Nullable String beanName) {
 		if (StringUtils.hasLength(beanName)) {
 			return (FactoryBean.class.isAssignableFrom(beanClass) ?
@@ -356,38 +361,40 @@ public abstract class AbstractAutoProxyCreator extends ProxyProcessorSupport
 	 * @return a proxy wrapping the bean, or the raw bean instance as-is
 	 */
 	protected Object wrapIfNecessary(Object bean, String beanName, Object cacheKey) {
-		// 若此Bean已经在targetSourcedBeans里，说明已经被代理过，那就直接返回即可
-		// (postProcessBeforeInstantiation()中成功创建的代理对象都会将beanName加入到targetSourceBeans中)
+		// 这种情况说明该bean已经被处理过，参考方法 : #postProcessBeforeInstantiation
 		if (StringUtils.hasLength(beanName) && this.targetSourcedBeans.contains(beanName)) {
 			return bean;
 		}
-		// 如果该Bean基础框架Bean或者免代理得Bean，那也不处理
+		// 这种情况说明该bean已经被标记为不需要处理，参考方法 : #postProcessBeforeInstantiation
 		if (Boolean.FALSE.equals(this.advisedBeans.get(cacheKey))) {
 			return bean;
 		}
-		// 逻辑同上，对于实现了Advice，Advisor，AopInfrastructureBean接口的bean，都认为是spring aop的基础框架类，不能对他们创建代理对象，
-		// 同时子类也可以覆盖shouldSkip方法来指定不对哪些bean进行代理
+		// 如果这是一个基础设施bean 或者 需要被跳过的 bean， 则也不需要对其进行代理包装
+		// 同时将该信息记录到缓存  this.advisedBeans
 		if (isInfrastructureClass(bean.getClass()) || shouldSkip(bean.getClass(), beanName)) {
 			this.advisedBeans.put(cacheKey, Boolean.FALSE);
 			return bean;
 		}
 
 		// Create proxy if we have advice.
-		// getAdvicesAndAdvisorsForBean该方法由子类实现，如国有Advice切面切进去了，我们就要给他代理
-		// 根据getAdvicesAndAdvisorsForBean()方法的具体实现的不同，AbstractAutoProxyCreator又分成了两类自动代理机制
+		// 获取针对该bean的所有专用拦截器对象，对返回值数组需要分三种情况考虑 :
+		// 1. 返回数组有值 :  需要做代理，使用专用拦截器和通用拦截器
+		// 2. 返回数组无值，为空 : 需要做代理，仅使用通用拦截器
+		// 3. 返回为null : 不要给当前 bean 做代理
+		//  当前类 getAdvicesAndAdvisorsForBean 方法其实是一个抽象方法，具体实现由实现子类提供
 		Object[] specificInterceptors = getAdvicesAndAdvisorsForBean(bean.getClass(), beanName, null);
-		// 需要代理，那就进来给它创建一个代理对象吧
 		if (specificInterceptors != DO_NOT_PROXY) {
-			// 缓存起来，赋值为true，说明此key是被代理了的
+			// 缓存当前bean代理对象已创建
 			this.advisedBeans.put(cacheKey, Boolean.TRUE);
-			// 创建这个代理对象
+			// 创建代理对象
 			Object proxy = createProxy(
 					bean.getClass(), beanName, specificInterceptors, new SingletonTargetSource(bean));
-			// 创建好后缓存起来  避免重复创建
+			// 缓存代理对象类型
 			this.proxyTypes.put(cacheKey, proxy.getClass());
+			// 返回代理对象
 			return proxy;
 		}
-		// 不需要代理，也把这种不需要代理的对象给与缓存起来  赋值为false
+		// 缓存当前bean不要创建代理对象
 		this.advisedBeans.put(cacheKey, Boolean.FALSE);
 		return bean;
 	}
@@ -502,14 +509,15 @@ public abstract class AbstractAutoProxyCreator extends ProxyProcessorSupport
 				evaluateProxyInterfaces(beanClass, proxyFactory);
 			}
 		}
-		// buildAdvisors：整理合并得到最终的advisors （毕竟interceptorNames还指定了一些拦截器的）
-		// 至于调用的先后顺序，通过applyCommonInterceptorsFirst参数可以进行设置，若applyCommonInterceptorsFirst为true，interceptorNames属性指定的Advisor优先调用。默认为true
+		// 将针对当前 bean 的所有的专用拦截器和容器中的通用拦截器一并包装成 Spring Advisor 对象
+		// 用于创建最终的代理对象
 		Advisor[] advisors = buildAdvisors(beanName, specificInterceptors);
 		// 添加进工厂里
 		proxyFactory.addAdvisors(advisors);
 		// 把targetSource放进去  TargetSource的实现方式有多种 后面会介绍
 		proxyFactory.setTargetSource(targetSource);
-		// 这个方法是交给子类的，子类可以继续去定制此proxyFactory（Spring内部并没有搭理它）
+		// 定制化 proxyFactory， 方法#customizeProxyFactory在本类是一个空方法,
+		// 这里主要是留给实现子类一个定制 proxyFactory 的机会
 		customizeProxyFactory(proxyFactory);
 		// 沿用this得freezeProxy的属性值
 		proxyFactory.setFrozen(this.freezeProxy);
@@ -520,7 +528,8 @@ public abstract class AbstractAutoProxyCreator extends ProxyProcessorSupport
 		if (advisorsPreFiltered()) {
 			proxyFactory.setPreFiltered(true);
 		}
-		// getProxyClassLoader():调用者可议指定  否则为：ClassUtils.getDefaultClassLoader()
+		// proxyFactory 已经拥有了足够多的创建代理对象的信息，现在使用它创建
+		// 当前 bean 的代理对象
 		return proxyFactory.getProxy(getProxyClassLoader());
 	}
 
@@ -560,23 +569,28 @@ public abstract class AbstractAutoProxyCreator extends ProxyProcessorSupport
 	 * specific to this bean (may be empty, but not null)
 	 * @return the list of Advisors for the given bean
 	 */
-	// 下面，只剩一个重要的方法：buildAdvisors()没有解释了
+	 // 1. 根据 this.interceprotNames 找到所有通用拦截器 bean
+	 // 2. 根据 this.applyCommonInterceptorsFirst 设置将通用拦截器和专用拦截器放到同一个列表中
+     // 3. 将拦截器列表中的每个拦截器都包装成Spring Advisor 然后返回该 Spring Advisor 数组
 	protected Advisor[] buildAdvisors(@Nullable String beanName, @Nullable Object[] specificInterceptors) {
 		// Handle prototypes correctly...
-		// 解析interceptorNames而来得Advisor数组~~~
+		// 根据所设置的通用拦截器bean的名称(this.interceprotNames)获取相应的bean实例，并将其均包装成 Spring Advisor
 		Advisor[] commonInterceptors = resolveInterceptorNames();
 		// 注意：此处用得事Object
 		List<Object> allInterceptors = new ArrayList<>();
+		//  参数 specificInterceptors 表示的是针对当前操作的 bean 的专用拦截器对象
 		if (specificInterceptors != null) {
+			// 如果指定了专用拦截器，则应用它们
 			allInterceptors.addAll(Arrays.asList(specificInterceptors));
 			// 若解析它来的有内容
 			if (commonInterceptors.length > 0) {
-				// 放在头部  也就是最上面
+				// 根据属性  this.applyCommonInterceptorsFirst 决定通用拦截器/专用拦截器的应用顺序
 				if (this.applyCommonInterceptorsFirst) {
+					// 将通用拦截器放到专用拦截器前面
 					allInterceptors.addAll(0, Arrays.asList(commonInterceptors));
 				}
-				// 放在末尾
 				else {
+					// 将专用拦截器放到通用拦截器前面
 					allInterceptors.addAll(Arrays.asList(commonInterceptors));
 				}
 			}
@@ -587,10 +601,9 @@ public abstract class AbstractAutoProxyCreator extends ProxyProcessorSupport
 			logger.trace("Creating implicit proxy for bean '" + beanName + "' with " + nrOfCommonInterceptors +
 					" common interceptors and " + nrOfSpecificInterceptors + " specific interceptors");
 		}
-		// 把每一个Advisor都用advisorAdapterRegistry.wrap()包装一下~~~~
-		// 注意wrap方法，默认只支持那三种类型的Advice转换为Advisor的~~~
 		Advisor[] advisors = new Advisor[allInterceptors.size()];
 		for (int i = 0; i < allInterceptors.size(); i++) {
+			// 将上面获取的所有拦截器统一包装成 Spring Advisor
 			advisors[i] = this.advisorAdapterRegistry.wrap(allInterceptors.get(i));
 		}
 		return advisors;
@@ -600,7 +613,9 @@ public abstract class AbstractAutoProxyCreator extends ProxyProcessorSupport
 	 * Resolves the specified interceptor names to Advisor objects.
 	 * @see #setInterceptorNames
 	 */
-	// 处理interceptorNames，去容器内找出来
+	 // this.interceptorNames 记录的是拦截器bean的名字，该方法根据这些bean的名字找到相应的拦截器对象,
+	// 相应的拦截器bean可能是 Spring Advisor 或者 AOP MethodInterceptor, 该方法使用工具
+	// this.advisorAdapterRegistry 将它们统一包装成 Spring Advisor 并返回
 	private Advisor[] resolveInterceptorNames() {
 		BeanFactory bf = this.beanFactory;
 		ConfigurableBeanFactory cbf = (bf instanceof ConfigurableBeanFactory ? (ConfigurableBeanFactory) bf : null);
@@ -645,6 +660,8 @@ public abstract class AbstractAutoProxyCreator extends ProxyProcessorSupport
 	 * @see #DO_NOT_PROXY
 	 * @see #PROXY_WITHOUT_ADDITIONAL_INTERCEPTORS
 	 */
+	// 返回针对指定bean的专用拦截器对象(AOP Interceptor 或者 Spring Advisor)列表, 如果返回空数组则表明参数bean没有相应的专用拦截器，
+	// 如果返回null表示参数bean不需要创建代理对象抽象方法，具体实现子类要负责提供实现
 	@Nullable
 	protected abstract Object[] getAdvicesAndAdvisorsForBean(Class<?> beanClass, String beanName,
 			@Nullable TargetSource customTargetSource) throws BeansException;

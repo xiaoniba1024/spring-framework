@@ -29,6 +29,7 @@ import org.aopalliance.intercept.MethodInterceptor;
  * @author Rod Johnson
  * @see DynamicIntroductionAdvice
  */
+// IntroductionInterceptor它是对MethodInterceptor的一个扩展，同时他还继承了接口DynamicIntroductionAdvice
 public interface IntroductionInterceptor extends MethodInterceptor, DynamicIntroductionAdvice {
 
 }

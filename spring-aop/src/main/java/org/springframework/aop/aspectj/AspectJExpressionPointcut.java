@@ -82,11 +82,14 @@ import org.springframework.util.StringUtils;
  * @since 2.0
  */
 @SuppressWarnings("serial")
+// 很容易发现，自己即是ClassFilter，也是MethodMatcher
+// 它是子接口:ExpressionPointcut的实现类
 public class AspectJExpressionPointcut extends AbstractExpressionPointcut
 		implements ClassFilter, IntroductionAwareMethodMatcher, BeanFactoryAware {
 
 	private static final Set<PointcutPrimitive> SUPPORTED_PRIMITIVES = new HashSet<>();
-
+	// 从此处可以看出，Spring支持的AspectJ的切点语言表达式一共有10中（加上后面的自己的Bean方式一共11种）
+	// AspectJ框架本省支持的非常非常多，详解枚举类：org.aspectj.weaver.tools.PointcutPrimitive
 	static {
 		SUPPORTED_PRIMITIVES.add(PointcutPrimitive.EXECUTION);
 		SUPPORTED_PRIMITIVES.add(PointcutPrimitive.ARGS);
@@ -109,13 +112,14 @@ public class AspectJExpressionPointcut extends AbstractExpressionPointcut
 	private String[] pointcutParameterNames = new String[0];
 
 	private Class<?>[] pointcutParameterTypes = new Class<?>[0];
-
+	// 它持有BeanFactory 的引用，但是是可以为null的，也就是说它脱离容器也能够正常work
 	@Nullable
 	private BeanFactory beanFactory;
 
 	@Nullable
 	private transient ClassLoader pointcutClassLoader;
-
+	// PointcutExpression是org.aspectj.weaver.tools.PointcutExpression是AspectJ的类
+	// 它最终通过一系列操作，由org.aspectj.weaver.tools.PointcutParser#parsePointcutExpression从字符串表达式解析出来
 	@Nullable
 	private transient PointcutExpression pointcutExpression;
 
@@ -237,6 +241,7 @@ public class AspectJExpressionPointcut extends AbstractExpressionPointcut
 	/**
 	 * Initialize the underlying AspectJ pointcut parser.
 	 */
+	// 初始化一个Pointcut的解析器。我们发现最后一行，新注册了一个BeanPointcutDesignatorHandler  它是准们处理Spring自己支持的bean() 的切点表达式的
 	private PointcutParser initializePointcutParser(@Nullable ClassLoader classLoader) {
 		PointcutParser parser = PointcutParser
 				.getPointcutParserSupportingSpecifiedPrimitivesAndUsingSpecifiedClassLoaderForResolution(
@@ -252,6 +257,7 @@ public class AspectJExpressionPointcut extends AbstractExpressionPointcut
 	 * We also allow {@code and} between two pointcut sub-expressions.
 	 * <p>This method converts back to {@code &&} for the AspectJ pointcut parser.
 	 */
+	// 由此可见，我们不仅仅可议写&& ||  !这种。也支持 and or not这种哦~~~
 	private String replaceBooleanOperators(String pcExpr) {
 		String result = StringUtils.replace(pcExpr, " and ", " && ");
 		result = StringUtils.replace(result, " or ", " || ");
@@ -266,7 +272,7 @@ public class AspectJExpressionPointcut extends AbstractExpressionPointcut
 	public PointcutExpression getPointcutExpression() {
 		return obtainPointcutExpression();
 	}
-
+	// 这是ClassFilter 匹配类。借助的PointcutExpression#couldMatchJoinPointsInType 去匹配
 	@Override
 	public boolean matches(Class<?> targetClass) {
 		PointcutExpression pointcutExpression = obtainPointcutExpression();
@@ -288,7 +294,7 @@ public class AspectJExpressionPointcut extends AbstractExpressionPointcut
 		}
 		return false;
 	}
-
+	// MethodMatcher 匹配方法，借助的PointcutExpression和ShadowMatch去匹配的
 	@Override
 	public boolean matches(Method method, Class<?> targetClass, boolean hasIntroductions) {
 		obtainPointcutExpression();
@@ -324,6 +330,7 @@ public class AspectJExpressionPointcut extends AbstractExpressionPointcut
 
 	@Override
 	public boolean isRuntime() {
+		// mayNeedDynamicTest 相当于由AspectJ框架去判断的（是否有动态内容）
 		return obtainPointcutExpression().mayNeedDynamicTest();
 	}
 
@@ -585,6 +592,7 @@ public class AspectJExpressionPointcut extends AbstractExpressionPointcut
 	 * automatically by examining a thread local variable and therefore a matching
 	 * context need not be set on the pointcut.
 	 */
+	// 真正的解析，依赖于Spring自己实现的这个内部类（主要是ContextBasedMatcher 这个类，就会使用到BeanFactory了）
 	private class BeanPointcutDesignatorHandler implements PointcutDesignatorHandler {
 
 		private static final String BEAN_DESIGNATOR_NAME = "bean";
@@ -593,7 +601,7 @@ public class AspectJExpressionPointcut extends AbstractExpressionPointcut
 		public String getDesignatorName() {
 			return BEAN_DESIGNATOR_NAME;
 		}
-
+		// ContextBasedMatcher由Spring自己实现，对容器内Bean的匹配
 		@Override
 		public ContextBasedMatcher parse(String expression) {
 			return new BeanContextMatcher(expression);

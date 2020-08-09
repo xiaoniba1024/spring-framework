@@ -36,12 +36,13 @@ import org.springframework.util.ObjectUtils;
  * @see AbstractGenericPointcutAdvisor
  */
 @SuppressWarnings("serial")
+// 实现了 Ordered接口
 public abstract class AbstractPointcutAdvisor implements PointcutAdvisor, Ordered, Serializable {
 
 	@Nullable
 	private Integer order;
 
-
+	// 调用者可以手动来指定Order
 	public void setOrder(int order) {
 		this.order = order;
 	}
@@ -51,13 +52,14 @@ public abstract class AbstractPointcutAdvisor implements PointcutAdvisor, Ordere
 		if (this.order != null) {
 			return this.order;
 		}
+		// 若调用者没有指定Order，那就拿advice的order为准（若有），否则LOWEST_PRECEDENCE表示最后执行
 		Advice advice = getAdvice();
 		if (advice instanceof Ordered) {
 			return ((Ordered) advice).getOrder();
 		}
 		return Ordered.LOWEST_PRECEDENCE;
 	}
-
+	// Spring还没有使用该属性 永远返回true了
 	@Override
 	public boolean isPerInstance() {
 		return true;
