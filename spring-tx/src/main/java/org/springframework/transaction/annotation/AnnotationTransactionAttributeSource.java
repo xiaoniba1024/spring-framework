@@ -53,21 +53,25 @@ import org.springframework.util.ClassUtils;
  * @see org.springframework.transaction.interceptor.TransactionProxyFactoryBean#setTransactionAttributeSource
  */
 @SuppressWarnings("serial")
+// 分析该事务注解，最终组织成一个TransactionAttribute供随后使用
 public class AnnotationTransactionAttributeSource extends AbstractFallbackTransactionAttributeSource
 		implements Serializable {
-
+	// JTA 1.2事务注解是否被使用
 	private static final boolean jta12Present;
-
+	// EJB 3 事务注解是否被使用
 	private static final boolean ejb3Present;
 
 	static {
 		ClassLoader classLoader = AnnotationTransactionAttributeSource.class.getClassLoader();
+		// 根据注解类的存在性判断 JTA 1.2 事务注解是否被使用
 		jta12Present = ClassUtils.isPresent("javax.transaction.Transactional", classLoader);
+		// 根据注解类的存在性判断 EJB 3 事务注解是否被使用
 		ejb3Present = ClassUtils.isPresent("javax.ejb.TransactionAttribute", classLoader);
 	}
-
+	// 指出仅仅处理public方法(基于代理的AOP情况下的典型做法)，
+	// 还是也处理protected/private方法(使用AspectJ类织入方式下的典型做法)
 	private final boolean publicMethodsOnly;
-
+	// 保存用于分析事务注解的事务注解分析器
 	private final Set<TransactionAnnotationParser> annotationParsers;
 
 
@@ -90,6 +94,9 @@ public class AnnotationTransactionAttributeSource extends AbstractFallbackTransa
 	 * (typically used with AspectJ class weaving)
 	 */
 	public AnnotationTransactionAttributeSource(boolean publicMethodsOnly) {
+		// 下面这段逻辑主要是准备用于分析事务注解的各个分析器，放到属性 annotationParsers 中
+		// Spring事务注解分析器总是
+		// 会被使用 : SpringTransactionAnnotationParser
 		this.publicMethodsOnly = publicMethodsOnly;
 		if (jta12Present || ejb3Present) {
 			this.annotationParsers = new LinkedHashSet<>(4);
@@ -110,6 +117,8 @@ public class AnnotationTransactionAttributeSource extends AbstractFallbackTransa
 	 * Create a custom AnnotationTransactionAttributeSource.
 	 * @param annotationParser the TransactionAnnotationParser to use
 	 */
+	// 创建一个定制的 AnnotationTransactionAttributeSource ，使用给定的事务注解分析器(一个),
+	// publicMethodsOnly 缺省使用 true，仅针对public方法工作
 	public AnnotationTransactionAttributeSource(TransactionAnnotationParser annotationParser) {
 		this.publicMethodsOnly = true;
 		Assert.notNull(annotationParser, "TransactionAnnotationParser must not be null");
@@ -120,6 +129,8 @@ public class AnnotationTransactionAttributeSource extends AbstractFallbackTransa
 	 * Create a custom AnnotationTransactionAttributeSource.
 	 * @param annotationParsers the TransactionAnnotationParsers to use
 	 */
+	// 创建一个定制的 AnnotationTransactionAttributeSource ，使用给定的事务注解分析器(多个),
+	// publicMethodsOnly 缺省使用 true，仅针对public方法工作
 	public AnnotationTransactionAttributeSource(TransactionAnnotationParser... annotationParsers) {
 		this.publicMethodsOnly = true;
 		Assert.notEmpty(annotationParsers, "At least one TransactionAnnotationParser needs to be specified");
@@ -130,6 +141,8 @@ public class AnnotationTransactionAttributeSource extends AbstractFallbackTransa
 	 * Create a custom AnnotationTransactionAttributeSource.
 	 * @param annotationParsers the TransactionAnnotationParsers to use
 	 */
+	// 创建一个定制的 AnnotationTransactionAttributeSource ，使用给定的事务注解分析器(多个),
+	// publicMethodsOnly 缺省使用 true，仅针对public方法工作
 	public AnnotationTransactionAttributeSource(Set<TransactionAnnotationParser> annotationParsers) {
 		this.publicMethodsOnly = true;
 		Assert.notEmpty(annotationParsers, "At least one TransactionAnnotationParser needs to be specified");
@@ -146,16 +159,20 @@ public class AnnotationTransactionAttributeSource extends AbstractFallbackTransa
 		}
 		return false;
 	}
-
+	// 获取某个类上的事务注解属性
 	@Override
 	@Nullable
 	protected TransactionAttribute findTransactionAttribute(Class<?> clazz) {
+		// Class 实现了 AnnotatedElement 接口，所以交给下面的
+		// determineTransactionAttribute(AnnotatedElement)执行具体的分析逻辑
 		return determineTransactionAttribute(clazz);
 	}
-
+	// 获取某个方法上的事务注解属性
 	@Override
 	@Nullable
 	protected TransactionAttribute findTransactionAttribute(Method method) {
+		// Method 实现了 AnnotatedElement 接口，所以交给下面的
+		// determineTransactionAttribute(AnnotatedElement)执行具体的分析逻辑
 		return determineTransactionAttribute(method);
 	}
 
@@ -169,6 +186,9 @@ public class AnnotationTransactionAttributeSource extends AbstractFallbackTransa
 	 * @param element the annotated method or class
 	 * @return the configured transaction attribute, or {@code null} if none was found
 	 */
+	// 分析获取某个被注解的元素，具体的来讲，指的是一个类或者一个方法上的事务注解属性。
+	// 该实现会遍历自己属性annotationParsers中所包含的事务注解属性分析器试图获取事务注解属性，
+	// 一旦获取到事务注解属性则返回，如果获取不到则返回null，表明目标类/方法上没有事务注解
 	@Nullable
 	protected TransactionAttribute determineTransactionAttribute(AnnotatedElement element) {
 		for (TransactionAnnotationParser parser : this.annotationParsers) {
@@ -183,6 +203,7 @@ public class AnnotationTransactionAttributeSource extends AbstractFallbackTransa
 	/**
 	 * By default, only public methods can be made transactional.
 	 */
+	// 缺省情况下，仅仅public方法上的事务注解才被识别和应用
 	@Override
 	protected boolean allowPublicMethodsOnly() {
 		return this.publicMethodsOnly;

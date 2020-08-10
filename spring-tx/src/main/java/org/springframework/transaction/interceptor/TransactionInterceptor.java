@@ -86,7 +86,7 @@ public class TransactionInterceptor extends TransactionAspectSupport implements 
 		setTransactionAttributeSource(tas);
 	}
 
-
+	// MethodInterceptor 接口所定义的方法
 	@Override
 	@Nullable
 	public Object invoke(MethodInvocation invocation) throws Throwable {
@@ -96,6 +96,8 @@ public class TransactionInterceptor extends TransactionAspectSupport implements 
 		Class<?> targetClass = (invocation.getThis() != null ? AopUtils.getTargetClass(invocation.getThis()) : null);
 
 		// Adapt to TransactionAspectSupport's invokeWithinTransaction...
+		// 使用事务拦截逻辑包围目标方法的调用，从而起到事务管理的效果
+		// 方法 invokeWithinTransaction 由基类 TransactionAspectSupport 提供实现
 		return invokeWithinTransaction(invocation.getMethod(), targetClass, invocation::proceed);
 	}
 
